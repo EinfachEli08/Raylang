@@ -1,6 +1,10 @@
-# Test case: Main entry point and return value
+# Test case: Return value
 
-In this test, it is checked whether a return value can be processed correctly in an Entry function.
+In this test, it is checked whether a return value can be processed correctly.
+
+**Note:**  
+This target may only be executed before the main entry point has been implemented.  
+Afterwards, this test is non-functional.
 
 ## Build instructions
 
@@ -12,7 +16,7 @@ In this test, it is checked whether a return value can be processed correctly in
 - `main.asm`: Assembly source code for the test.
 - `makefile`: Build script for creating the test.
 
-## Requirements
+## Requirements 
 - `make` (for building the test)
 - `fasm` (Flat Assembler)
 - `gcc` (GNU Compiler Collection, for linking and temporary standard library)

@@ -1,5 +1,5 @@
-test.o: test.asm
-	fasm test.asm
+test.o: main.asm
+	fasm main.asm
 
 test: test.o
 	gcc -no-pie -o test test.o
