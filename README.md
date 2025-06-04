@@ -24,14 +24,14 @@ Ray was designed from scratch with a few clear goals:
 
 ## Features (Showcased)
 
-✔ Nullable and default fields
-✔ `record` types for data modeling
-✔ Type-safe `match` and `when` expressions
-✔ Inline function syntax
-✔ Scoped visibility (`scoped`)
-✔ String interpolation with `${}`
-✔ Extension methods (`modify`)
-✔ Built-in IO and Utillitiy Libraries
+* ✔ Nullable and default fields
+* ✔ `record` types for data modeling
+* ✔ Type-safe `match` and `when` expressions
+* ✔ Inline function syntax
+* ✔ Scoped visibility (`scoped`)
+* ✔ String interpolation with `${}`
+* ✔ Extension methods (`modify`)
+* ✔ Built-in IO and Utillitiy Libraries
 
 ---
 ## Ray´s Syntax
@@ -264,14 +264,14 @@ cd Raylang
 
 ---
 ## Current Progress
-| Test                             | Status       |
-|----------------------------------|--------------|
-| 000: Returning values            | Passed       |
-| 001: Comments                    | Not passed   |
-| 002: imports                     | Not passed   |
-| 003: Main entry point            | Not passed   |
-| 004: Functions calling Functions | Doesnt Exist |
-| XXX: More tests comming soon     | TBA          |
+| Test                             | Status       | Passed at  |
+|----------------------------------|--------------|------------|
+| 000: Returning values            | Passed       | 04.06.2025 |
+| 001: Comments                    | Not passed   |            |
+| 002: imports                     | Not passed   |            |
+| 003: Main entry point            | Not passed   |            |
+| 004: Functions calling Functions | Doesnt Exist |            |
+| XXX: More tests comming soon     | TBA          |            |
 ---
 
 ## Contributing
