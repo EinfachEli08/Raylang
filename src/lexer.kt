@@ -29,6 +29,14 @@ class Lexer {
     private val multiLineCommentStart = "/*"
     private val multiLineCommentEnd = "*/"
 
+
+    /**
+     * Tokenizes the input string into a list of tokens.
+     * Handles comments, strings, identifiers, numbers, operators, and separators.
+     *
+     * @param input The source code to tokenize.
+     * @return A list of tokens extracted from the input.
+     */
     fun tokenize(input: String): List<Token> {
         val tokens = mutableListOf<Token>()
         var i = 0

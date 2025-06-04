@@ -19,9 +19,32 @@ fun main(args: Array<String>){
     output.appendLine("format ELF64")
     output.appendLine("section \".text\" executable")
     output.appendLine("public main")
+    output.appendLine("main:")
 
+    val parser = Parser(tokens)
+    val nodes = parser.parseAll()
+    for (node in nodes) {
+        when (node) {
+            is ReturnNode -> {
+                output.appendLine(      "    mov rax, 60")
+                if (node.isNumber) {
+                    output.appendLine(  "    mov rdi, ${node.value}")
+                } else {
+                    output.appendLine(  "    mov rdi, [${node.value}]")
+                }
+                output.appendLine(      "    syscall        ; return")
+            }
+            else -> {
+                println("Unknown ASTNode-Type: $node")
+            }
+        }
+    }
 
-    //TODO: Implement returning
+    println()
+    println("Ray to assembly compiled code:")
+    println()
+    println(output.toString())
+    println("File saved to ${file.parentFile?.absolutePath ?: "."}, ${file.nameWithoutExtension}.asm")
 
     val asmFile = File(file.parentFile, file.nameWithoutExtension + ".asm")
     asmFile.writeText(output.toString())
