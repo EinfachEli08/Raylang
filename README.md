@@ -263,6 +263,16 @@ cd Raylang
 
 
 ---
+## Current Progress
+| Test                             | Status       |
+|----------------------------------|--------------|
+| 000: Returning values            | Passed       |
+| 001: Comments                    | Not passed   |
+| 002: imports                     | Not passed   |
+| 003: Main entry point            | Not passed   |
+| 004: Functions calling Functions | Doesnt Exist |
+| XXX: More tests comming soon     | TBA          |
+---
 
 ## Contributing
 
