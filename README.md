@@ -244,8 +244,8 @@ cd Raylang
 
 * [x] Core syntax design
 * [x] Initial parser
-* [ ] AST
-* [ ] First return
+* [x] AST
+* [x] First return
 * [ ] Main Entry
 * [ ] First hello world
 * [ ] Functions
