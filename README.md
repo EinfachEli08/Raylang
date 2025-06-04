@@ -18,7 +18,7 @@ Ray was designed from scratch with a few clear goals:
 
 ---
 
-## 📦 Features (Showcased)
+## Features (Showcased)
 
 ✔ Nullable and default fields
 ✔ `record` types for data modeling
@@ -31,7 +31,7 @@ Ray was designed from scratch with a few clear goals:
 
 ---
 
-## 💡 Sample Code
+## Sample Code
 
 ```ray
 package main 
@@ -169,20 +169,18 @@ func main(argv?, argc?) : Int {
 
 ---
 
-## 🔧 Getting Started
+## Getting Started
 
 Ray isn't fully packaged yet, but you can explore the codebase and follow development:
 
 ```bash
-git clone https://github.com/your-org/ray
-cd ray
-# Build the compiler/interpreter (WIP)
-./build.sh
+git clone https://github.com/EinfachEli08/Raylang.git
+cd Raylang
 ```
 
 ---
 
-## 🛤 Roadmap
+## Roadmap
 
 * [x] Core syntax design
 * [x] Initial parser
@@ -202,7 +200,7 @@ cd ray
 
 ---
 
-## 🤝 Contributing
+## Contributing
 
 Ray is a community-driven experiment. Contributions are welcome!
 
@@ -211,13 +209,9 @@ Ray is a community-driven experiment. Contributions are welcome!
 
 ---
 
-## 📄 License
+## License
 
 Ray is released under the [MIT License](LICENSE).
-
----
-
-*Ray is for the curious — a place to rethink what a programming language could be.*
 
 ---
 
