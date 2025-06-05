@@ -251,8 +251,8 @@ cd Raylang
 * [x] Initial parser
 * [x] AST
 * [x] First return
-* [ ] Main Entry
 * [ ] First hello world
+* [ ] Main Entry
 * [ ] Functions
 * [ ] ...
 * [ ] Standard library expansion
