@@ -1,4 +1,4 @@
-import putchar
+extern putchar
 
 func main() {
     putchar(82)
