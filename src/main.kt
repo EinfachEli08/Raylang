@@ -32,7 +32,18 @@ fun main(args: Array<String>){
                 } else {
                     output.appendLine(  "    mov rdi, [${node.value}]")
                 }
-                output.appendLine(      "    syscall        ; return")
+                val comment = node.inlineComment?.let { " ; what happens here?".replace("what happens here?", it) } ?: ""
+                output.appendLine(      "    syscall        ; return" + comment)
+            }
+            is CommentNode -> {
+                if (node.isMultiLine) {
+                    node.lines?.forEach {
+                        output.appendLine("    ; ${it}")
+                    }
+                    output.appendLine("    ; (multi-line comment)")
+                } else {
+                    output.appendLine("    ; ${node.text} (single-line comment)")
+                }
             }
             else -> {
                 println("Unknown ASTNode-Type: $node")
@@ -49,3 +60,4 @@ fun main(args: Array<String>){
     val asmFile = File(file.parentFile, file.nameWithoutExtension + ".asm")
     asmFile.writeText(output.toString())
 }
+

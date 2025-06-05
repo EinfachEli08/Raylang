@@ -18,7 +18,8 @@ data class Token(
     val value: String,
     val position: Int,
     val line: Int,
-    val column: Int
+    val column: Int,
+    val isMultiLine: Boolean? = null
 )
 
 class Lexer {
@@ -27,6 +28,7 @@ class Lexer {
     private val separators = setOf("(", ")", "{", "}", ";", ",", ":", "?")
     private val commentStart = "//"
     private val multiLineCommentStart = "/*"
+    private val multiLineRayDocCommentStart = "/**"
     private val multiLineCommentEnd = "*/"
 
 
@@ -51,16 +53,16 @@ class Lexer {
             val startColumn = column
 
             when {
-                // Einzelzeilenkommentar
+                // Single line comment
                 input.startsWith(commentStart, i) -> {
-                    tokens.add(Token(TokenType.COMMENT, commentStart, start, startLine, startColumn))
+                    tokens.add(Token(TokenType.COMMENT, commentStart, start, startLine, startColumn, isMultiLine = false))
                     i += commentStart.length
                     column += commentStart.length
                     val textStart = i
                     val end = input.indexOf('\n', i).takeIf { it != -1 } ?: length
                     val commentText = input.substring(textStart, end)
                     if (commentText.isNotEmpty()) {
-                        tokens.add(Token(TokenType.TEXT, commentText, textStart, startLine, column))
+                        tokens.add(Token(TokenType.TEXT, commentText, textStart, startLine, column, isMultiLine = false))
                     }
                     i = end
                     tokens.add(Token(TokenType.ENDL, "ENDL", i, line, column + commentText.length))
@@ -69,17 +71,17 @@ class Lexer {
                     if (i < length) i++ // consume '\n'
                 }
 
-                // Mehrzeilenkommentar
-                input.startsWith(multiLineCommentStart, i) -> {
-                    tokens.add(Token(TokenType.OPEN_COMMENT, multiLineCommentStart, start, startLine, startColumn))
-                    i += multiLineCommentStart.length
-                    column += multiLineCommentStart.length
+                // RayDoc-Comment
+                input.startsWith(multiLineRayDocCommentStart, i) -> {
+                    tokens.add(Token(TokenType.OPEN_COMMENT, multiLineRayDocCommentStart, start, startLine, startColumn, isMultiLine = true))
+                    i += multiLineRayDocCommentStart.length
+                    column += multiLineRayDocCommentStart.length
                     val end = input.indexOf(multiLineCommentEnd, i).takeIf { it != -1 } ?: length
                     val commentBody = input.substring(i, end)
                     val lines = commentBody.split('\n')
                     for ((idx, lineText) in lines.withIndex()) {
                         if (lineText.isNotEmpty()) {
-                            tokens.add(Token(TokenType.TEXT, lineText, i, line, column))
+                            tokens.add(Token(TokenType.TEXT, lineText, i, line, column, isMultiLine = true))
                         }
                         if (idx < lines.lastIndex) {
                             tokens.add(Token(TokenType.ENDL, "ENDL", i, line, column + lineText.length))
@@ -91,7 +93,32 @@ class Lexer {
                         i += lineText.length
                         if (idx < lines.lastIndex) i++ // consume '\n'
                     }
-                    tokens.add(Token(TokenType.CLOSED_COMMENT, multiLineCommentEnd, end, line, column))
+                    i = end + multiLineCommentEnd.length
+                    column += multiLineCommentEnd.length
+                }
+
+                // Multi-line comment
+                input.startsWith(multiLineCommentStart, i) -> {
+                    tokens.add(Token(TokenType.OPEN_COMMENT, multiLineCommentStart, start, startLine, startColumn, isMultiLine = true))
+                    i += multiLineCommentStart.length
+                    column += multiLineCommentStart.length
+                    val end = input.indexOf(multiLineCommentEnd, i).takeIf { it != -1 } ?: length
+                    val commentBody = input.substring(i, end)
+                    val lines = commentBody.split('\n')
+                    for ((idx, lineText) in lines.withIndex()) {
+                        if (lineText.isNotEmpty()) {
+                            tokens.add(Token(TokenType.TEXT, lineText, i, line, column, isMultiLine = true))
+                        }
+                        if (idx < lines.lastIndex) {
+                            tokens.add(Token(TokenType.ENDL, "ENDL", i, line, column + lineText.length))
+                            line++
+                            column = 1
+                        } else {
+                            column += lineText.length
+                        }
+                        i += lineText.length
+                        if (idx < lines.lastIndex) i++ // consume '\n'
+                    }
                     i = end + multiLineCommentEnd.length
                     column += multiLineCommentEnd.length
                 }
@@ -120,7 +147,7 @@ class Lexer {
                         i++
                         column++
                     }
-                    i++ // schließendes " konsumieren
+                    i++
                     column++
                     tokens.add(Token(TokenType.STRING, literal, start, startLine, startColumn))
                 }

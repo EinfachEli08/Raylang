@@ -1,5 +1,16 @@
-return(69)
-return(420)
-return(1)
-return(2)
-return(3)
+// This should only return 69
+return(69) /** what happens here?
+
+    1 fuck around 1 find out
+    2 fuck around 2 find out
+    3 fuck around 3 find out
+    fucking square
+*/
+
+/*
+    These returns are commented out.
+*/
+// return(420)
+// return(1)
+/* return(2)
+ return(3)*/

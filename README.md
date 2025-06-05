@@ -327,7 +327,7 @@ cd Raylang
 | Test                             | Status       | Passed at  |
 |----------------------------------|--------------|------------|
 | 000: Returning values            | Passed       | 04.06.2025 |
-| 001: Comments                    | Not passed   |            |
+| 001: Comments                    | Passed       | 05.06.2025 |
 | 002: Externals                   | Not passed   |            |
 | 003: Main entry point            | Not passed   |            |
 | 004: Functions calling Functions | Doesnt Exist |            |
