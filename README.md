@@ -42,6 +42,7 @@ Ray was designed from scratch with a few clear goals:
 | `/* [text] */`              | Multi-line comment                                              | `/* Multi-line \n comment */`                                 |
 | `package [name]`            | Defines the module/package the file belongs to                  | `package main`                                                |
 | `import [pkg]`              | Imports classes, functions, or packages                         | `import ray.io`, `import ray.io.print()`                      |
+| `extern [lib]`              | Imports external functions from assembly files                  | `extern putchar`, `extern putchar, printf`                    |
 | `record [Name] {}`          | Defines a data structure (like a `struct`)                      | `record Person { var name : String }`                         |
 | `class [Name] {}`           | Defines a class                                                 | `class Greeter {}`                                            |
 | `constructor(...) {}`       | Special method for initializing a class                         | `constructor(name : String) { ... }`                          |
@@ -268,7 +269,7 @@ cd Raylang
 |----------------------------------|--------------|------------|
 | 000: Returning values            | Passed       | 04.06.2025 |
 | 001: Comments                    | Not passed   |            |
-| 002: imports                     | Not passed   |            |
+| 002: Externals                   | Not passed   |            |
 | 003: Main entry point            | Not passed   |            |
 | 004: Functions calling Functions | Doesnt Exist |            |
 | XXX: More tests comming soon     | TBA          |            |
