@@ -72,6 +72,48 @@ class Parser(private val tokens: List<Token>) {
     }
 
     /**
+     * Parses a return statement in the form of `exit (IDENTIFIER | NUMBER)`.
+     * Returns a ExitNode if successful, or null if not a return statement.
+     */
+    fun parseExit(): ExitNode? {
+        // Expects: exit ( IDENTIFIER | NUMBER )
+        if (current().type == TokenType.KEYWORD && current().value == "exit") {
+            advance()
+            val params = expectFuncParams()
+            if (params != null) {
+                // Prüfe auf Inline-Kommentar (einzeilig oder mehrzeilig) direkt nach return(...)
+                var inlineComment: String? = null
+                if (current().type == TokenType.COMMENT && current().isMultiLine == false) {
+                    advance()
+                    if (current().type == TokenType.TEXT) {
+                        inlineComment = current().value.trim()
+                        advance()
+                    }
+                    if (current().type == TokenType.ENDL) {
+                        advance()
+                    }
+                } else if (current().type == TokenType.OPEN_COMMENT && current().isMultiLine == true) {
+                    // Mehrzeiliger Kommentar direkt nach return(...)
+                    advance()
+                    val lines = mutableListOf<String>()
+                    while (current().type == TokenType.TEXT || current().type == TokenType.ENDL) {
+                        if (current().type == TokenType.TEXT) {
+                            lines.add(current().value.trim())
+                        }
+                        advance()
+                    }
+                    if (current().type == TokenType.CLOSED_COMMENT) {
+                        advance()
+                    }
+                    inlineComment = lines.joinToString(" ")
+                }
+                return ExitNode(params.first, params.second, inlineComment)
+            }
+        }
+        return null
+    }
+
+    /**
      * Parses a comment in the form of `// comment` or `/* comment */`.
      * Returns a CommentNode if successful, or null if not a comment.
      */
@@ -119,10 +161,13 @@ class Parser(private val tokens: List<Token>) {
     fun parseAll(): List<ASTNode> {
         val nodes = mutableListOf<ASTNode>()
         while (current().type != TokenType.EOF) {
-            val node = parseReturn()
+            val returnNode = parseReturn()
+            val exitNode = parseExit()
             val commentNode = parseComment()
-            if (node != null) {
-                nodes.add(node)
+            if (returnNode != null) {
+                nodes.add(returnNode)
+            } else if (exitNode != null) {
+                nodes.add(exitNode)
             } else if (commentNode != null) {
                 nodes.add(commentNode)
             } else {
