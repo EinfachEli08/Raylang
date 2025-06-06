@@ -1,5 +1,12 @@
 extern putchar
 
+/*
+ * printf
+ * extern exit
+ * extern amogus
+ */
+
+// RAYLANG!
 putchar(82)
 putchar(65)
 putchar(89)
@@ -9,4 +16,7 @@ putchar(78)
 putchar(71)
 putchar(33)
 
-exit(0)
+// new line
+putchar(10)
+
+exit(69)
