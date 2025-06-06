@@ -36,41 +36,41 @@ Ray was designed from scratch with a few clear goals:
 ---
 ## Ray´s Syntax
 
-| **Keyword / Symbol**         | **Description**                                                        | **Example**                                                    |
-|------------------------------|------------------------------------------------------------------------|----------------------------------------------------------------|
-| `// [text]`                  | Single-line comment                                                    | `// This is a comment`                                         |
-| `/* [text] */`               | Multi-line comment                                                     | `/* Multi-line \n comment */`                                  |
-| `package [name]`             | Defines the module/package the file belongs to                         | `package main`                                                 |
-| `import [pkg]`               | Imports classes, functions, or packages                                | `import ray.io`, `import ray.io.print()`                       |
-| `extern [asm]`               | Imports external "functions" from assembly files                       | `extern putchar`, `extern putchar, printf`                     |
-| `record [Name] {}`           | Defines a data structure (like a `struct`)                             | `record Person { var name : String }`                          |
-| `class [Name] {}`            | Defines a class                                                        | `class Greeter {}`                                             |
-| `constructor(...) {}`        | Special method for initializing a class                                | `constructor(name : String) { ... }`                           |
-| `func [name](...) : [type]`  | Defines a function with parameters and return type                     | `func greet(name : String) : String`                           |
-| `scoped [type] [name]`       | Declares a variable/function with limited (local/private) scope        | `scoped func greet(...)`                                       |
-| `modify [Type] {}`           | Extension modifier to add methods to existing types                    | `modify String { func upper() => ... }`                        |
-| `var [name] : [type]`        | Mutable variable declaration                                           | `var age : Int = 28`                                           |
-| `val [name] : [type]`        | Immutable (final) variable declaration                                 | `val name : String = "Elias"`                                  |
-| `[func]; [func]`             | Optional semicolons allow function stacking in one line                | `func inline() => print("this is"); println("highly illegal")` |
-| `[var]?`                     | Declares an optional (nullable) variable                               | `var age? : Int`                                               |
-| `[var] = [value]`            | Assigns a value                                                        | `val x = 42`                                                   |
-| `[var]? = [var]?`            | Assigns only if value is present; supports optional chaining           | `person.age? = age?`                                           |
-| `[var] = [var]? : [var]`     | Assigns alternative value if no value present;                         | `person.age = age? : 60`                                       |
-| `[var] = [var]?!`            | Forces an Optional value to be non-optional                            | `person.age = age?!`                                           |
-| `==`, `!=`, `&&`, `>=`, `<=` | Comparison and logical operators                                       | `if (x == y && y != 0)`                                        |
-| `{ [code] }`                 | Scoped code block                                                      | `func test() { println("Hi") }`                                |
-| `=> [code]`                  | Inline/arrow function or expression                                    | `func greet() => println("Hi")`                                |
-| `return([value])`            | Returns a value from a function (must match declared type)             | `return("Hello")`                                              |
-| `exit([value : Int])`        | Exits the program at any point. Provides an Int exit code              | `exit(0)`                                                      |
-| `when ([var]) { ... }`       | Pattern matching (switch-case equivalent)                              | `when (role) { "admin" => ..., else => ... }`                  |
-| `match ([var]) { ... }`      | Expression-based pattern match (returns value)                         | `val mood = match (input) { "happy" => ..., default => ... }`  |
-| `default`, `else`            | Default branch in `match` or `when` expressions                        | `default => "unknown"`                                         |
-| `it`                         | Refers to the current instance (like `this` in other languages)        | `it.toGreet.name = name`                                       |
-| `[var] : T = val { ... }`    | Declares a variable with attached scope. `it` is the value reference.  | `var refreshCounter : Int = 0 { ... }   `                      |
-| `[var] : T { ... }`          | Declares a variable with attached scope. `it` is the value reference.  | `var refreshCounter : Int { ... }     `                        |
-| `get()`                      | Defines logic for reading the variable                                 | `get(){ ... return( ... it) }              `                   |
-| `set(new : T)`               | Defines logic for setting the variable                                 | `set(input : String){ ... it = input ... }              `      |
-| `.function()`                | Extension method call                                                  | `"hello".shout()`                                              |
+| **Keyword / Symbol**         | **Description**                                                        | **Example**                                                    | **Implementation status** |
+|------------------------------|------------------------------------------------------------------------|----------------------------------------------------------------|---------------------------|
+| `// [text]`                  | Single-line comment                                                    | `// This is a comment`                                         | ✔ Implemented             |
+| `/* [text] */`               | Multi-line comment                                                     | `/* Multi-line \n comment */`                                  | ✔ Implemented             |
+| `package [name]`             | Defines the module/package the file belongs to                         | `package main`                                                 | ❌ Not implemented        |
+| `import [pkg]`               | Imports classes, functions, or packages                                | `import ray.io`, `import ray.io.print()`                       | ❌ Not implemented        |
+| `extern [asm]`               | Imports external "functions" from assembly files                       | `extern putchar`, `extern putchar, printf`                     | ❌ Not implemented        |
+| `record [Name] {}`           | Defines a data structure (like a `struct`)                             | `record Person { var name : String }`                          | ❌ Not implemented        |
+| `class [Name] {}`            | Defines a class                                                        | `class Greeter {}`                                             | ❌ Not implemented        |
+| `constructor(...) {}`        | Special method for initializing a class                                | `constructor(name : String) { ... }`                           | ❌ Not implemented        |
+| `func [name](...) : [type]`  | Defines a function with parameters and return type                     | `func greet(name : String) : String`                           | ❌ Not implemented        |
+| `scoped [type] [name]`       | Declares a variable/function with limited (local/private) scope        | `scoped func greet(...)`                                       | ❌ Not implemented        |
+| `modify [Type] {}`           | Extension modifier to add methods to existing types                    | `modify String { func upper() => ... }`                        | ❌ Not implemented        |
+| `var [name] : [type]`        | Mutable variable declaration                                           | `var age : Int = 28`                                           | ❌ Not implemented        |
+| `val [name] : [type]`        | Immutable (final) variable declaration                                 | `val name : String = "Elias"`                                  | ❌ Not implemented        |
+| `[func]; [func]`             | Optional semicolons allow function stacking in one line                | `func inline() => print("this is"); println("highly illegal")` | ❌ Not implemented        |
+| `[var]?`                     | Declares an optional (nullable) variable                               | `var age? : Int`                                               | ❌ Not implemented        |
+| `[var] = [value]`            | Assigns a value                                                        | `val x = 42`                                                   | ❌ Not implemented        |
+| `[var]? = [var]?`            | Assigns only if value is present; supports optional chaining           | `person.age? = age?`                                           | ❌ Not implemented        |
+| `[var] = [var]? : [var]`     | Assigns alternative value if no value present;                         | `person.age = age? : 60`                                       | ❌ Not implemented        |
+| `[var] = [var]?!`            | Forces an Optional value to be non-optional                            | `person.age = age?!`                                           | ❌ Not implemented        |
+| `==`, `!=`, `&&`, `>=`, `<=` | Comparison and logical operators                                       | `if (x == y && y != 0)`                                        | ❌ Not implemented        |
+| `{ [code] }`                 | Scoped code block                                                      | `func test() { println("Hi") }`                                | ❌ Not implemented        |
+| `=> [code]`                  | Inline/arrow function or expression                                    | `func greet() => println("Hi")`                                | ❌ Not implemented        |
+| `return([value])`            | Returns a value from a function (must match declared type)             | `return("Hello")`                                              | ❌ Not implemented        |
+| `exit([value : Int])`        | Exits the program at any point. Provides an Int exit code              | `exit(0)`                                                      | ✔ Implemented             |
+| `when ([var]) { ... }`       | Pattern matching (switch-case equivalent)                              | `when (role) { "admin" => ..., else => ... }`                  | ❌ Not implemented        |
+| `match ([var]) { ... }`      | Expression-based pattern match (returns value)                         | `val mood = match (input) { "happy" => ..., default => ... }`  | ❌ Not implemented        |
+| `default`, `else`            | Default branch in `match` or `when` expressions                        | `default => "unknown"`                                         | ❌ Not implemented        |
+| `it`                         | Refers to the current instance (like `this` in other languages)        | `it.toGreet.name = name`                                       | ❌ Not implemented        |
+| `[var] : T = val { ... }`    | Declares a variable with attached scope. `it` is the value reference.  | `var refreshCounter : Int = 0 { ... }   `                      | ❌ Not implemented        |
+| `[var] : T { ... }`          | Declares a variable with attached scope. `it` is the value reference.  | `var refreshCounter : Int { ... }     `                        | ❌ Not implemented        | 
+| `get()`                      | Defines logic for reading the variable                                 | `get(){ ... return( ... it) }              `                   | ❌ Not implemented        |
+| `set(new : T)`               | Defines logic for setting the variable                                 | `set(input : String){ ... it = input ... }              `      | ❌ Not implemented        |
+| `.function()`                | Extension method call                                                  | `"hello".shout()`                                              | ❌ Not implemented        |
 
 ---
 
@@ -331,7 +331,7 @@ cd Raylang
 | 000: Exiting                     | Passed       | 04.06.2025 |
 | 001: Comments                    | Passed       | 05.06.2025 |
 | 002: Externals                   | Not passed   |            |
-| 003: Main entry point            | Not passed   |            |
+| 003: Main entry point/w return   | Not passed   |            |
 | 004: Functions calling Functions | Not passed   |            |
 | 004: Functions returning         | Doesnt exist |            |
 | XXX: More tests comming soon     | TBA          |            |
