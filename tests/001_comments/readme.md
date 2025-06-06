@@ -1,10 +1,7 @@
-# Test case: Return value
+# Test case: Comments
 
-In this test, it is checked whether a return value can be processed correctly.
-
-**Note:**  
-This target may only be executed before the main entry point has been implemented.  
-Afterwards, this test is non-functional.
+In this test, it is checked if comments can be compiled into source code
+- this is an optional debug feature, to trace compilation bugs in the future
 
 ## Build instructions
 
