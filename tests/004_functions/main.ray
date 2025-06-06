@@ -1,0 +1,33 @@
+// importing putchar from gcc
+extern putchar
+
+// Hello in ASCII
+func printHello() {
+    putchar(72)
+    putchar(69)
+    putchar(76)
+    putchar(76)
+    putchar(79)
+}
+
+// World in ASCII
+func printWorld() {
+    putchar(32)
+    putchar(87)
+    putchar(79)
+    putchar(82)
+    putchar(76)
+    putchar(68)
+}
+
+// Print both
+func printHelloWorld() {
+    printHello()
+    printWorld()
+}
+
+// Call both and return success
+func main() {
+    printHelloWorld()
+    return(0)
+}
