@@ -23,7 +23,7 @@ data class Token(
 )
 
 class Lexer {
-    private val keywords = setOf("func", "var", "return", "import")
+    private val keywords = setOf("func", "var", "return","exit", "import")
     private val operators = setOf("+", "-", "*", "/", "=", "==", "=>")
     private val separators = setOf("(", ")", "{", "}", ";", ",", ":", "?")
     private val commentStart = "//"
