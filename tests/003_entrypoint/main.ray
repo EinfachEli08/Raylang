@@ -1,3 +1,13 @@
+extern putchar
+
 func main() {
-	return(69)
+    // you know...
+    putchar(65)
+    putchar(77)
+    putchar(79)
+    putchar(71)
+    putchar(85)
+    putchar(83)
+
+    return(69)
 }
