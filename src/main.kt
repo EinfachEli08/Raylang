@@ -25,7 +25,7 @@ fun main(args: Array<String>){
     val nodes = parser.parseAll()
     for (node in nodes) {
         when (node) {
-            is ReturnNode -> {
+            is ExitNode -> {
                 output.appendLine(      "    mov rax, 60")
                 if (node.isNumber) {
                     output.appendLine(  "    mov rdi, ${node.value}")
@@ -33,7 +33,11 @@ fun main(args: Array<String>){
                     output.appendLine(  "    mov rdi, [${node.value}]")
                 }
                 val comment = node.inlineComment?.let { " ; what happens here?".replace("what happens here?", it) } ?: ""
-                output.appendLine(      "    syscall        ; return" + comment)
+                output.appendLine(      "    syscall        ; exit" + comment)
+            }
+            is ReturnNode -> {
+                //TODO: Implement returning when scopes and functions exist
+                output.appendLine(      "    ; return" + comment)
             }
             is CommentNode -> {
                 if (node.isMultiLine) {
