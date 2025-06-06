@@ -1,14 +1,12 @@
 extern putchar
 
-func main() {
-    putchar(82)
-    putchar(65)
-    putchar(89)
-    putchar(76)
-    putchar(65)
-    putchar(78)
-    putchar(71)
-    putchar(33)
+putchar(82)
+putchar(65)
+putchar(89)
+putchar(76)
+putchar(65)
+putchar(78)
+putchar(71)
+putchar(33)
 
-    return(0)
-}
+exit(0)
