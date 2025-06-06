@@ -19,7 +19,11 @@ fun main(args: Array<String>){
     output.appendLine("format ELF64")
     output.appendLine("section \".text\" executable")
     output.appendLine("public main")
+    output.appendLine("EXTERNALPLACEHOLDER")
     output.appendLine("main:")
+
+    val externalList: MutableList<String> = mutableListOf()
+    val externalStringList = StringBuilder()
 
     val parser = Parser(tokens)
     val nodes = parser.parseAll()
@@ -32,27 +36,42 @@ fun main(args: Array<String>){
                 } else {
                     output.appendLine(  "    mov rdi, [${node.value}]")
                 }
-                val comment = node.inlineComment?.let { " ; what happens here?".replace("what happens here?", it) } ?: ""
-                output.appendLine(      "    syscall        ; exit" + comment)
+                 output.appendLine(      "    syscall")
             }
+
+            is FunctionCallNode -> {
+                output.appendLine("    mov rdi, ${node.value}")
+                output.appendLine("    call ${node.name}")
+            }
+
             is ReturnNode -> {
-                //TODO: Implement returning when scopes and functions exist
-                output.appendLine(      "    ; return" + comment)
+                output.appendLine(      "    mov rax, ${node.value}")
+                output.appendLine("    ret")
             }
-            is CommentNode -> {
-                if (node.isMultiLine) {
-                    node.lines?.forEach {
-                        output.appendLine("    ; ${it}")
-                    }
-                    output.appendLine("    ; (multi-line comment)")
-                } else {
-                    output.appendLine("    ; ${node.text} (single-line comment)")
-                }
+
+            is ExternNode -> {
+               for (function in node.functionList) {
+                   if (externalList.contains(function)) {
+                       throw IllegalArgumentException("DefErr: 'external $function' already got defined!")
+                   }
+                   externalList.add(function)
+
+               }
             }
+
             else -> {
                 println("Unknown ASTNode-Type: $node")
             }
         }
+    }
+
+    // if available, add extern functions to the output
+    if (externalList.isNotEmpty()) {
+        for (function in externalList) {
+            externalStringList.appendLine("extrn ${function}")
+        }
+        output.insert(output.indexOf("EXTERNALPLACEHOLDER"), externalStringList.toString())
+        output.replace(output.indexOf("EXTERNALPLACEHOLDER"), output.indexOf("EXTERNALPLACEHOLDER") + "EXTERNALPLACEHOLDER".length, "")
     }
 
     println()

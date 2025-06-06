@@ -1,8 +1,48 @@
 class Parser(private val tokens: List<Token>) {
+    var knownFunctions: List<String> = emptyList()
     private var pos = 0
 
     private fun current(): Token = tokens.getOrElse(pos) { tokens.last() }
     private fun advance() { pos++ }
+
+
+    /**
+     * Parses an inline comment (single-line or multi-line) directly after an expression.
+     * Returns the comment text or null if no comment is present.
+     */
+    private fun parseInlineComment(): String? {
+        if (current().type == TokenType.COMMENT && current().isMultiLine == false) {
+            advance()
+            if (current().type == TokenType.TEXT) {
+                val comment = current().value.trim()
+                advance()
+                if (current().type == TokenType.ENDL) {
+                    advance()
+                }
+                return comment
+            }
+            if (current().type == TokenType.ENDL) {
+                advance()
+            }
+            return null
+        } else if (current().type == TokenType.OPEN_COMMENT && current().isMultiLine == true) {
+            advance()
+            val lines = mutableListOf<String>()
+            while (current().type == TokenType.TEXT || current().type == TokenType.ENDL) {
+                if (current().type == TokenType.TEXT) {
+                    lines.add(current().value.trim())
+                }
+                advance()
+            }
+            if (current().type == TokenType.CLOSED_COMMENT) {
+                advance()
+            }
+            return lines.joinToString(" ")
+        }
+        return null
+    }
+
+
 
     /**
      * Expects a function parameter in the form of (IDENTIFIER | NUMBER).
@@ -29,6 +69,56 @@ class Parser(private val tokens: List<Token>) {
         return null
     }
 
+    fun parseExtern(): ExternNode? {
+        // Expects: extern (IDENTIFIER | KEYWORD)
+        if (current().type == TokenType.KEYWORD && current().value == "extern") {
+            advance()
+
+            val functionList = mutableListOf<String>()
+            // Akzeptiere IDENTIFIER oder KEYWORD als Funktionsnamen
+            while (current().type == TokenType.IDENTIFIER || (current().type == TokenType.KEYWORD && current().value != "extern")) {
+                functionList.add(current().value)
+                advance()
+
+                if (current().type == TokenType.SEPARATOR && current().value == ",") {
+                    advance()
+                    if (!(current().type == TokenType.IDENTIFIER || (current().type == TokenType.KEYWORD && current().value != "extern"))) {
+                        throw IllegalArgumentException("SyntaxErr: Expected identifier after ',' in extern list. \n      Error at: Row: ${current().line}, Col: ${current().column}")
+                    }
+                } else if (current().type == TokenType.ENDL && current().value == "ENDL") {
+                    advance()
+                    break
+                } else {
+                    throw IllegalArgumentException("SyntaxErr: Expected ',' or ')' after function name. \n      Error at: Row: ${current().line}, Col: ${current().column}")
+                }
+            }
+            knownFunctions += functionList // Update known functions
+            return ExternNode(functionList)
+        }
+        //TODO("Not yet implemented")
+        return null
+    }
+
+    fun parseFunctionCall(): FunctionCallNode? {
+        if (current().type == TokenType.IDENTIFIER){
+            //println(knownFunctions)
+            val isKnown = knownFunctions.contains(current().value)
+            if(isKnown) {
+                val identifier = current().value
+                //println(current())
+                advance()
+                val params = expectFuncParams()
+                if (params != null) {
+                    val inlineComment = parseInlineComment()
+                    return FunctionCallNode(identifier, params.first, params.second)
+                }
+            }else{
+                throw IllegalArgumentException("DefErr: Function ´${current().value}´ isnt defined yet! \n      Error at Row: ${current().line}, Col: ${current().column}")
+            }
+        }
+        return null
+    }
+
     /**
      * Parses a return statement in the form of `return (IDENTIFIER | NUMBER)`.
      * Returns a ReturnNode if successful, or null if not a return statement.
@@ -39,33 +129,7 @@ class Parser(private val tokens: List<Token>) {
             advance()
             val params = expectFuncParams()
             if (params != null) {
-                // Prüfe auf Inline-Kommentar (einzeilig oder mehrzeilig) direkt nach return(...)
-                var inlineComment: String? = null
-                if (current().type == TokenType.COMMENT && current().isMultiLine == false) {
-                    advance()
-                    if (current().type == TokenType.TEXT) {
-                        inlineComment = current().value.trim()
-                        advance()
-                    }
-                    if (current().type == TokenType.ENDL) {
-                        advance()
-                    }
-                } else if (current().type == TokenType.OPEN_COMMENT && current().isMultiLine == true) {
-                    // Mehrzeiliger Kommentar direkt nach return(...)
-                    advance()
-                    val lines = mutableListOf<String>()
-                    while (current().type == TokenType.TEXT || current().type == TokenType.ENDL) {
-                        if (current().type == TokenType.TEXT) {
-                            lines.add(current().value.trim())
-                        }
-                        advance()
-                    }
-                    if (current().type == TokenType.CLOSED_COMMENT) {
-                        advance()
-                    }
-                    inlineComment = lines.joinToString(" ")
-                }
-                return ReturnNode(params.first, params.second, inlineComment)
+                return ReturnNode(params.first, params.second)
             }
         }
         return null
@@ -81,33 +145,8 @@ class Parser(private val tokens: List<Token>) {
             advance()
             val params = expectFuncParams()
             if (params != null) {
-                // Prüfe auf Inline-Kommentar (einzeilig oder mehrzeilig) direkt nach return(...)
-                var inlineComment: String? = null
-                if (current().type == TokenType.COMMENT && current().isMultiLine == false) {
-                    advance()
-                    if (current().type == TokenType.TEXT) {
-                        inlineComment = current().value.trim()
-                        advance()
-                    }
-                    if (current().type == TokenType.ENDL) {
-                        advance()
-                    }
-                } else if (current().type == TokenType.OPEN_COMMENT && current().isMultiLine == true) {
-                    // Mehrzeiliger Kommentar direkt nach return(...)
-                    advance()
-                    val lines = mutableListOf<String>()
-                    while (current().type == TokenType.TEXT || current().type == TokenType.ENDL) {
-                        if (current().type == TokenType.TEXT) {
-                            lines.add(current().value.trim())
-                        }
-                        advance()
-                    }
-                    if (current().type == TokenType.CLOSED_COMMENT) {
-                        advance()
-                    }
-                    inlineComment = lines.joinToString(" ")
-                }
-                return ExitNode(params.first, params.second, inlineComment)
+                val inlineComment = parseInlineComment()
+                return ExitNode(params.first, params.second)
             }
         }
         return null
@@ -116,7 +155,9 @@ class Parser(private val tokens: List<Token>) {
     /**
      * Parses a comment in the form of `// comment` or `/* comment */`.
      * Returns a CommentNode if successful, or null if not a comment.
-     */
+
+
+    REMOVED: Comments usually dont get parsed into the AST, but are used for documentation or debugging.
     fun parseComment(): CommentNode? {
         // Expects: // comment oder /* comment */
         if (current().type == TokenType.COMMENT || current().type == TokenType.OPEN_COMMENT) {
@@ -153,7 +194,7 @@ class Parser(private val tokens: List<Token>) {
         }
         return null
     }
-
+*/
     /**
      * Parses all statements in the input until EOF.
      * Returns a list of ASTNodes.
@@ -161,16 +202,20 @@ class Parser(private val tokens: List<Token>) {
     fun parseAll(): List<ASTNode> {
         val nodes = mutableListOf<ASTNode>()
         while (current().type != TokenType.EOF) {
+            val externNode = parseExtern()
             val returnNode = parseReturn()
             val exitNode = parseExit()
-            val commentNode = parseComment()
-            if (returnNode != null) {
+            val functionCallNode = parseFunctionCall()
+
+            if (externNode != null) {
+                nodes.add(externNode)
+            } else if (functionCallNode != null) {
+                nodes.add(functionCallNode)
+            } else if (returnNode != null) {
                 nodes.add(returnNode)
             } else if (exitNode != null) {
                 nodes.add(exitNode)
-            } else if (commentNode != null) {
-                nodes.add(commentNode)
-            } else {
+            } else{
                 advance()
             }
         }
