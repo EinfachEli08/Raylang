@@ -85,6 +85,8 @@ Ray was designed from scratch with a few clear goals:
   name? = "Ray"                              // valid
   name? = null                               // also valid
   let safeName = name? : "No Name provided"  // valid as well
+
+  // you can force optionals to return null if no value was provided. Dont do this! (but you can)
   let newName = name?!                       // valid but dangerous
   let newName = name?                        // invalid
   ```
@@ -305,7 +307,7 @@ cd Raylang
 * [x] Core syntax design
 * [x] Initial parser
 * [x] AST
-* [x] First return
+* [x] exitting
 * [ ] First hello world
 * [ ] Main Entry
 * [ ] Functions
@@ -326,11 +328,12 @@ cd Raylang
 ## Current Progress
 | Test                             | Status       | Passed at  |
 |----------------------------------|--------------|------------|
-| 000: Returning values            | Passed       | 04.06.2025 |
+| 000: Exiting                     | Passed       | 04.06.2025 |
 | 001: Comments                    | Passed       | 05.06.2025 |
 | 002: Externals                   | Not passed   |            |
 | 003: Main entry point            | Not passed   |            |
-| 004: Functions calling Functions | Doesnt Exist |            |
+| 004: Functions calling Functions | Not passed   |            |
+| 004: Functions returning         | Doesnt exist |            |
 | XXX: More tests comming soon     | TBA          |            |
 ---
 
