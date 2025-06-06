@@ -249,7 +249,10 @@ var userCounter : Int = 0 {
         return(readWriteCount)
     }
 
+    // If available, increment by a value, else increment by 1
     func increment(by? : Int) => it + (by? : 1)
+
+    // If available, decrement by a value, else decrement by 1
     func decrement(by? : Int) => it - (by? : 1)
 }
 
