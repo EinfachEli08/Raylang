@@ -249,8 +249,8 @@ var userCounter : Int = 0 {
         return(readWriteCount)
     }
 
-    func increment(by : Int) => it++
-    func decrement(by : Int) => it--
+    func increment(by? : Int) => it + (by? : 1)
+    func decrement(by? : Int) => it - (by? : 1)
 }
 
 
