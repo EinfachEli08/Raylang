@@ -29,6 +29,5 @@ func printWorld() {
 // Print both
 func printHelloWorld() => printHello(); printWorld(); endLine() // Print a newline at the end
 
-
 func endLine() => putchar(10) // Newline character
 
