@@ -3,6 +3,7 @@ enum class TokenType {
     KEYWORD,
     NUMBER,
     STRING,
+    TYPE,
     OPERATOR,
     SEPARATOR,
     COMMENT,
@@ -24,7 +25,7 @@ data class Token(
 
 class Lexer {
     private val keywords = setOf("func", "var", "return", "extern","exit", "import")
-    private val operators = setOf("+", "-", "*", "/", "=", "==", "=>")
+    private val operators = setOf("=>", "+", "-", "*", "/", "=", "==")
     private val separators = setOf("(", ")", "{", "}", ";", ",", ":", "?")
     private val commentStart = "//"
     private val multiLineCommentStart = "/*"

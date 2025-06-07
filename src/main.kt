@@ -20,52 +20,81 @@ fun main(args: Array<String>){
     output.appendLine("section \".text\" executable")
     output.appendLine("public main")
     output.appendLine("EXTERNALPLACEHOLDER")
-    output.appendLine("main:")
+
 
     val externalList: MutableList<String> = mutableListOf()
     val externalStringList = StringBuilder()
 
     val parser = Parser(tokens)
     val nodes = parser.parseAll()
+
+    // Funktions-Nodes extrahieren
+    val functionNodes = nodes.filterIsInstance<FunctionNode>()
+    val mainFunction = functionNodes.find { it.name == "main" }
+    if (mainFunction == null) {
+        System.err.println("Fehler: Keine Funktion 'main' gefunden!")
+        return
+    }
+
+    // Externals wie gehabt sammeln
     for (node in nodes) {
-        when (node) {
-            is ExitNode -> {
-                output.appendLine(      "    mov rax, 60")
-                if (node.isNumber) {
-                    output.appendLine(  "    mov rdi, ${node.value}")
-                } else {
-                    output.appendLine(  "    mov rdi, [${node.value}]")
+        if (node is ExternNode) {
+            for (function in node.functionList) {
+                if (externalList.contains(function)) {
+                    throw IllegalArgumentException("DefErr: 'external $function' already got defined!")
                 }
-                 output.appendLine(      "    syscall")
-            }
-
-            is FunctionCallNode -> {
-                output.appendLine("    mov rdi, ${node.value}")
-                output.appendLine("    call ${node.name}")
-            }
-
-            is ReturnNode -> {
-                output.appendLine(      "    mov rax, ${node.value}")
-                output.appendLine("    ret")
-            }
-
-            is ExternNode -> {
-               for (function in node.functionList) {
-                   if (externalList.contains(function)) {
-                       throw IllegalArgumentException("DefErr: 'external $function' already got defined!")
-                   }
-                   externalList.add(function)
-
-               }
-            }
-
-            else -> {
-                println("Unknown ASTNode-Type: $node")
+                externalList.add(function)
             }
         }
     }
 
-    // if available, add extern functions to the output
+    // Assembly für alle Funktionen generieren
+    for (func in functionNodes) {
+        output.appendLine()
+        output.appendLine("; --- ${func.name} ---")
+        output.appendLine("${func.name}:")
+        println(func)
+        var hasExplicitReturn = false
+        for (bodyNode in func.body) {
+            when (bodyNode) {
+                is ExitNode -> {
+                    output.appendLine("    mov rax, 60")
+                    if (bodyNode.isNumber) {
+                        output.appendLine("    mov rdi, ${bodyNode.value}")
+                    } else {
+                        output.appendLine("    mov rdi, [${bodyNode.value}]")
+                    }
+                    output.appendLine("    syscall")
+                }
+                is FunctionCallNode -> {
+                    // Unterscheide zwischen externen und eigenen Funktionen
+                    if (externalList.contains(bodyNode.name)) {
+                        output.appendLine("    mov rdi, ${bodyNode.value}")
+                        output.appendLine("    call ${bodyNode.name}")
+                    } else {
+                        output.appendLine("    call ${bodyNode.name}")
+                    }
+                }
+                is ReturnNode -> {
+                    hasExplicitReturn = true
+                    output.appendLine("    mov eax, ${bodyNode.value}    ; return ${bodyNode.value}")
+                    output.appendLine("    ret")
+                }
+                else -> {
+                    output.appendLine("    ; Unbekannter Funktions-Body-Node: $bodyNode")
+                }
+            }
+        }
+        // Falls kein explizites return vorhanden, ret am Ende einfügen
+        if (!hasExplicitReturn) {
+            output.appendLine("    ret")
+        }
+    }
+
+    // Main-Label als Entry-Point deklarieren
+    output.replace(output.indexOf("main:"), output.indexOf("main:") + "main:".length, "main:")
+
+    // Externals einfügen wie gehabt
     if (externalList.isNotEmpty()) {
         for (function in externalList) {
             externalStringList.appendLine("extrn ${function}")
@@ -83,4 +112,3 @@ fun main(args: Array<String>){
     val asmFile = File(file.parentFile, file.nameWithoutExtension + ".asm")
     asmFile.writeText(output.toString())
 }
-

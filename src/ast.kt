@@ -12,3 +12,5 @@ data class ExternNode(val functionList:List<String>) : ASTNode()
 // a node for function calls, e.g. putchar(x: Any) or putchar("A")
 data class FunctionCallNode(val name: String, val value: String, val isNumber: Boolean) : ASTNode()
 
+// a node for function definitions, e.g. func foo(x: Int) { ... }
+data class FunctionNode(val name: String, val params: List<String>, val body: List<ASTNode>) : ASTNode()

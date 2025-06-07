@@ -50,6 +50,16 @@ class Parser(private val tokens: List<Token>) {
     private fun expectFuncParams(): Pair<String, Boolean>? {
         if (current().type == TokenType.SEPARATOR && current().value == "(") {
             advance()
+            // Leere Klammern erlauben
+            if (current().type == TokenType.SEPARATOR && current().value == ")") {
+                val closeParenToken = current()
+                advance()
+                // Check for a line break oder EOF nach der schließenden Klammer
+                if (current().type != TokenType.ENDL && current().type != TokenType.EOF && current().type != TokenType.COMMENT && current().type != TokenType.OPEN_COMMENT) {
+                    throw IllegalArgumentException("SyntaxErr: No Linebreak after function! Error at: Row: ${closeParenToken.line}, Col: ${closeParenToken.column + closeParenToken.value.length}")
+                }
+                return Pair("", false)
+            }
             if (current().type == TokenType.IDENTIFIER || current().type == TokenType.NUMBER) {
                 val value = current().value
                 val isNumber = current().type == TokenType.NUMBER
@@ -57,8 +67,6 @@ class Parser(private val tokens: List<Token>) {
                 if (current().type == TokenType.SEPARATOR && current().value == ")") {
                     val closeParenToken = current()
                     advance()
-
-                    // Check for a line break or EOF after the closing parenthesis
                     if (current().type != TokenType.ENDL && current().type != TokenType.EOF && current().type != TokenType.COMMENT && current().type != TokenType.OPEN_COMMENT) {
                         throw IllegalArgumentException("SyntaxErr: No Linebreak after function! Error at: Row: ${closeParenToken.line}, Col: ${closeParenToken.column + closeParenToken.value.length}")
                     }
@@ -109,7 +117,6 @@ class Parser(private val tokens: List<Token>) {
                 advance()
                 val params = expectFuncParams()
                 if (params != null) {
-                    val inlineComment = parseInlineComment()
                     return FunctionCallNode(identifier, params.first, params.second)
                 }
             }else{
@@ -195,20 +202,47 @@ class Parser(private val tokens: List<Token>) {
         return null
     }
 */
+    fun collectFunctionNames() {
+        var i = 0
+        while (i < tokens.size) {
+            val t = tokens[i]
+            if (t.type == TokenType.KEYWORD && t.value == "func") {
+                // nächstes Token ist Funktionsname
+                val nameToken = tokens.getOrNull(i + 1)
+                if (nameToken != null && nameToken.type == TokenType.IDENTIFIER) {
+                    knownFunctions += nameToken.value
+                }
+            }
+            if (t.type == TokenType.KEYWORD && t.value == "extern") {
+                // alle folgenden IDENTIFIER oder KEYWORD bis Zeilenende
+                var j = i + 1
+                while (j < tokens.size && (tokens[j].type == TokenType.IDENTIFIER || (tokens[j].type == TokenType.KEYWORD && tokens[j].value != "extern"))) {
+                    knownFunctions += tokens[j].value
+                    j++
+                }
+            }
+            i++
+        }
+    }
+
     /**
      * Parses all statements in the input until EOF.
      * Returns a list of ASTNodes.
      */
     fun parseAll(): List<ASTNode> {
+        collectFunctionNames() // Funktionsnamen vorab sammeln!
         val nodes = mutableListOf<ASTNode>()
         while (current().type != TokenType.EOF) {
             val externNode = parseExtern()
+            val functionNode = parseFunction()
             val returnNode = parseReturn()
             val exitNode = parseExit()
             val functionCallNode = parseFunctionCall()
 
             if (externNode != null) {
                 nodes.add(externNode)
+            } else if (functionNode != null) {
+                nodes.add(functionNode)
             } else if (functionCallNode != null) {
                 nodes.add(functionCallNode)
             } else if (returnNode != null) {
@@ -220,5 +254,69 @@ class Parser(private val tokens: List<Token>) {
             }
         }
         return nodes
+    }
+
+    fun parseFunction(): FunctionNode? {
+        // Expects: func name(params) { ... }
+        if (current().type == TokenType.KEYWORD && current().value == "func") {
+            advance()
+            if (current().type == TokenType.IDENTIFIER) {
+                val funcName = current().value
+                advance()
+                // Parameter parsen
+                val params = mutableListOf<String>()
+                if (current().type == TokenType.SEPARATOR && current().value == "(") {
+                    advance()
+                    while (current().type == TokenType.IDENTIFIER) {
+                        params.add(current().value)
+                        advance()
+                        if (current().type == TokenType.SEPARATOR && current().value == ",") {
+                            advance()
+                        } else {
+                            break
+                        }
+                    }
+                    if (current().type == TokenType.SEPARATOR && current().value == ")") {
+                        advance()
+                    } else {
+                        throw IllegalArgumentException("SyntaxErr: Expected ')' after function parameters at Row: ${current().line}, Col: ${current().column}")
+                    }
+                } else {
+                    throw IllegalArgumentException("SyntaxErr: Expected '(' after function name at Row: ${current().line}, Col: ${current().column}")
+                }
+                // Funktionsrumpf parsen
+                if (current().type == TokenType.SEPARATOR && current().value == "{") {
+                    advance()
+                    val body = mutableListOf<ASTNode>()
+                    while (!(current().type == TokenType.SEPARATOR && current().value == "}")) {
+                        // Reihenfolge: Extern, Function, Return, Exit, FunctionCall
+                        val externNode = parseExtern()
+                        val functionNode = parseFunction()
+                        val returnNode = parseReturn()
+                        val exitNode = parseExit()
+                        val functionCallNode = parseFunctionCall()
+                        if (externNode != null) {
+                            body.add(externNode)
+                        } else if (functionNode != null) {
+                            body.add(functionNode)
+                        } else if (functionCallNode != null) {
+                            body.add(functionCallNode)
+                        } else if (returnNode != null) {
+                            body.add(returnNode)
+                        } else if (exitNode != null) {
+                            body.add(exitNode)
+                        } else {
+                            advance()
+                        }
+                    }
+                    advance() // skip '}'
+                    knownFunctions += funcName
+                    return FunctionNode(funcName, params, body)
+                } else {
+                    throw IllegalArgumentException("SyntaxErr: Expected '{' or '=>' after function parameters at Row: ${current().line}, Col: ${current().column}")
+                }
+            }
+        }
+        return null
     }
 }
