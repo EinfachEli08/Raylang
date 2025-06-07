@@ -322,10 +322,26 @@ cd Raylang
 * [ ] If statements
 * [ ] loops
 * [ ] records
+* [ ] lists
 * [ ] ...
 * [ ] Bootstrapping
 * [ ] ...
+* [ ] Main scope as default scope
+* [ ] Scoped variables
 * [ ] Type safety
+* [ ] Types
+* [ ] String interpolation
+* [ ] Match expressions
+* [ ] When expressions
+* [ ] Optionals safety
+* [ ] nested functions
+* [ ] Classes
+* [ ] Constructors
+* [ ] 'it' keyword
+* [ ] ...
+* [ ] Variable scopes
+* [ ] getters and setters
+* [ ] Modifiers
 * [ ] ...
 * [ ] Target expansion
 * [ ] Standard library expansion
@@ -336,14 +352,18 @@ cd Raylang
 * [ ] REPL support
 ---
 ## Current Progress
-| Test                             | Status | Passed at  |
-|----------------------------------|--------|------------|
-| 000: Exiting                     | Passed | 04.06.2025 |
-| 001: Comments                    | Passed | 05.06.2025 |
-| 002: Externals                   | Passed | 06.06.2025 |
-| 003: Main entry point /w return  | Passed | 07.06.2025 |
-| 004: Functions calling Functions | Passed | 07.07.2025 |
-| XXX: More tests comming soon     | TBA    |            |
+| Test                                                       | Status       | Passed at  |
+|------------------------------------------------------------|--------------|------------|
+| 000: Exiting                                               | Passed       | 04.06.2025 |
+| 001: Comments                                              | Passed       | 05.06.2025 |
+| 002: Externals                                             | Passed       | 06.06.2025 |
+| 003: Main entry point /w return                            | Passed       | 07.06.2025 |
+| 004: Functions calling Functions                           | Passed       | 07.07.2025 |
+| 005: Declaring and using variables between functions       | Not passed   |            |
+| 006: Adding, Subtracting, Multiplying and (maybe) division | Not passed   |            |
+| 007: If statements                                         | Non-existent |            |
+| 008: For loops                                             | Non-existent |            |
+| XXX: More tests comming soon                               | TBA          |            |
 ---
 
 ## Contributing
