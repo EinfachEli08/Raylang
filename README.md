@@ -46,7 +46,7 @@ Ray was designed from scratch with a few clear goals:
 | `record [Name] {}`           | Defines a data structure (like a `struct`)                            | `record Person { var name : String }`                          | ❌ Not implemented            |
 | `class [Name] {}`            | Defines a class                                                       | `class Greeter {}`                                             | ❌ Not implemented            |
 | `constructor(...) {}`        | Special method for initializing a class                               | `constructor(name : String) { ... }`                           | ❌ Not implemented            |
-| `func [name](...) : [type]`  | Defines a function with parameters and return type                    | `func greet(name : String) : String`                           | ✔ Implemented (NO TYPES YET) |
+| `func [name](...) : [type]`  | Defines a function with parameters and return type                    | `func greet(name : String) : String`                           | ✔ Implemented                |
 | `scoped [type] [name]`       | Declares a variable/function with limited (local/private) scope       | `scoped func greet(...)`                                       | ❌ Not implemented            |
 | `modify [Type] {}`           | Extension modifier to add methods to existing types                   | `modify String { func upper() => ... }`                        | ❌ Not implemented            |
 | `var [name] : [type]`        | Mutable variable declaration                                          | `var age : Int = 28`                                           | ❌ Not implemented            |
@@ -58,8 +58,8 @@ Ray was designed from scratch with a few clear goals:
 | `[var] = [var]? : [var]`     | Assigns alternative value if no value present;                        | `person.age = age? : 60`                                       | ❌ Not implemented            |
 | `[var] = [var]?!`            | Forces an Optional value to be non-optional                           | `person.age = age?!`                                           | ❌ Not implemented            |
 | `==`, `!=`, `&&`, `>=`, `<=` | Comparison and logical operators                                      | `if (x == y && y != 0)`                                        | ❌ Not implemented            |
-| `{ [code] }`                 | Scoped code block                                                     | `func test() { println("Hi") }`                                | ❌ Not implemented            |
-| `=> [code]`                  | Inline/arrow function or expression                                   | `func greet() => println("Hi")`                                | ❌ Not implemented            |
+| `{ [code] }`                 | Scoped code block                                                     | `func test() { println("Hi") }`                                | ✔ Implemented                |
+| `=> [code]`                  | Inline/arrow function or expression                                   | `func greet() => println("Hi")`                                | ✔ Implemented                |
 | `return([value : Any ])`     | Returns a value from a function (must match declared type)            | `return("Hello")`                                              | ✔ Implemented (NO TYPES YET) |
 | `exit([value : Int])`        | Exits the program at any point. Provides an Int exit code             | `exit(0)`                                                      | ✔ Implemented (NO TYPES YET) |
 | `when ([var]) { ... }`       | Pattern matching (switch-case equivalent)                             | `when (role) { "admin" => ..., else => ... }`                  | ❌ Not implemented            |
@@ -67,7 +67,7 @@ Ray was designed from scratch with a few clear goals:
 | `default`, `else`            | Default branch in `match` or `when` expressions                       | `default => "unknown"`                                         | ❌ Not implemented            |
 | `it`                         | Refers to the current instance (like `this` in other languages)       | `it.toGreet.name = name`                                       | ❌ Not implemented            |
 | `[var] : T = val { ... }`    | Declares a variable with attached scope. `it` is the value reference. | `var refreshCounter : Int = 0 { ... }   `                      | ❌ Not implemented            |
-| `[var] : T { ... }`          | Declares a variable with attached scope. `it` is the value reference. | `var refreshCounter : Int { ... }     `                        | ❌ Not implemented            | 
+| `[var] : T { ... }`          | Declares a variable with attached scope. `it` is the value reference. | `var refreshCounter : Int { ... }     `                        | ❌ Not implemented            |
 | `get()`                      | Defines logic for reading the variable                                | `get(){ ... return( ... it) }              `                   | ❌ Not implemented            |
 | `set(new : T)`               | Defines logic for setting the variable                                | `set(input : String){ ... it = input ... }              `      | ❌ Not implemented            |
 | `.function()`                | Class/Record/Extension method call                                    | `"hello".shout()`                                              | ❌ Not implemented            |

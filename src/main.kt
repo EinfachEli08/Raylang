@@ -32,7 +32,7 @@ fun main(args: Array<String>){
     val functionNodes = nodes.filterIsInstance<FunctionNode>()
     val mainFunction = functionNodes.find { it.name == "main" }
     if (mainFunction == null) {
-        System.err.println("Fehler: Keine Funktion 'main' gefunden!")
+        throw IllegalArgumentException("DefErr: 'main' was not defined!")
         return
     }
 
@@ -53,7 +53,6 @@ fun main(args: Array<String>){
         output.appendLine()
         output.appendLine("; --- ${func.name} ---")
         output.appendLine("${func.name}:")
-        println(func)
         var hasExplicitReturn = false
         for (bodyNode in func.body) {
             when (bodyNode) {

@@ -54,9 +54,9 @@ class Parser(private val tokens: List<Token>) {
             if (current().type == TokenType.SEPARATOR && current().value == ")") {
                 val closeParenToken = current()
                 advance()
-                // Check for a line break oder EOF nach der schließenden Klammer
-                if (current().type != TokenType.ENDL && current().type != TokenType.EOF && current().type != TokenType.COMMENT && current().type != TokenType.OPEN_COMMENT) {
-                    throw IllegalArgumentException("SyntaxErr: No Linebreak after function! Error at: Row: ${closeParenToken.line}, Col: ${closeParenToken.column + closeParenToken.value.length}")
+                // Check for a line break, EOF, Kommentar oder ; nach der schließenden Klammer
+                if (current().type != TokenType.ENDL && current().type != TokenType.EOF && current().type != TokenType.COMMENT && current().type != TokenType.OPEN_COMMENT && !(current().type == TokenType.SEPARATOR && current().value == ";")) {
+                    throw IllegalArgumentException("SyntaxErr: No Linebreak or ; after function! Error at: Row: ${closeParenToken.line}, Col: ${closeParenToken.column + closeParenToken.value.length}")
                 }
                 return Pair("", false)
             }
@@ -67,8 +67,9 @@ class Parser(private val tokens: List<Token>) {
                 if (current().type == TokenType.SEPARATOR && current().value == ")") {
                     val closeParenToken = current()
                     advance()
-                    if (current().type != TokenType.ENDL && current().type != TokenType.EOF && current().type != TokenType.COMMENT && current().type != TokenType.OPEN_COMMENT) {
-                        throw IllegalArgumentException("SyntaxErr: No Linebreak after function! Error at: Row: ${closeParenToken.line}, Col: ${closeParenToken.column + closeParenToken.value.length}")
+                    // Erlaube auch ; als Abschluss für gestapelte Funktionscalls
+                    if (current().type != TokenType.ENDL && current().type != TokenType.EOF && current().type != TokenType.COMMENT && current().type != TokenType.OPEN_COMMENT && !(current().type == TokenType.SEPARATOR && current().value == ";")) {
+                        throw IllegalArgumentException("SyntaxErr: No Linebreak or ; after function! Error at: Row: ${closeParenToken.line}, Col: ${closeParenToken.column + closeParenToken.value.length}")
                     }
                     return Pair(value, isNumber)
                 }
@@ -257,7 +258,7 @@ class Parser(private val tokens: List<Token>) {
     }
 
     fun parseFunction(): FunctionNode? {
-        // Expects: func name(params) { ... }
+        // Expects: func name(params) { ... } oder func name(params) => ...
         if (current().type == TokenType.KEYWORD && current().value == "func") {
             advance()
             if (current().type == TokenType.IDENTIFIER) {
@@ -284,7 +285,33 @@ class Parser(private val tokens: List<Token>) {
                 } else {
                     throw IllegalArgumentException("SyntaxErr: Expected '(' after function name at Row: ${current().line}, Col: ${current().column}")
                 }
-                // Funktionsrumpf parsen
+                // Alternative Funktionssyntax: =>
+                if (current().type == TokenType.OPERATOR && current().value == "=>") {
+                    advance()
+                    val body = mutableListOf<ASTNode>()
+                    parse@ while (true) {
+                        // Funktionscalls stacken mit ;
+                        val functionCallNode = parseFunctionCall()
+                        if (functionCallNode != null) {
+                            body.add(functionCallNode)
+                        }
+                        // Beenden bei ENDL, Kommentar, Multiline-Kommentar, Raydoc-Kommentar
+                        if (current().type == TokenType.ENDL || current().type == TokenType.EOF ||
+                            current().type == TokenType.COMMENT || current().type == TokenType.OPEN_COMMENT) {
+                            break@parse
+                        }
+                        // Bei ; weitermachen (stacked calls)
+                        if (current().type == TokenType.SEPARATOR && current().value == ";") {
+                            advance()
+                            continue@parse
+                        }
+                        // Sonst: Token überspringen
+                        advance()
+                    }
+                    knownFunctions += funcName
+                    return FunctionNode(funcName, params, body)
+                }
+                // Klassische Funktionssyntax: {...}
                 if (current().type == TokenType.SEPARATOR && current().value == "{") {
                     advance()
                     val body = mutableListOf<ASTNode>()
