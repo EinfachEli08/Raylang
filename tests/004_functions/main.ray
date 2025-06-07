@@ -1,6 +1,12 @@
 // importing putchar from gcc
 extern putchar
 
+// Call both and return success
+func main() {
+    printHelloWorld()
+    return(0)
+}
+
 // Hello in ASCII
 func printHello() {
     putchar(72)
@@ -24,10 +30,9 @@ func printWorld() {
 func printHelloWorld() {
     printHello()
     printWorld()
+    endLine() // Print a newline at the end
 }
 
-// Call both and return success
-func main() {
-    printHelloWorld()
-    return(0)
+func endLine(){
+    putchar(10) // Newline character
 }

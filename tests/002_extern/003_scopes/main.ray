@@ -1,0 +1,15 @@
+extern putchar
+
+func main() {
+    /*
+        Printing out HI!
+    */
+    putchar(72)
+    putchar(73)
+    putchar(33)
+
+    // new line
+    putchar(10)
+
+    return(69)
+}
