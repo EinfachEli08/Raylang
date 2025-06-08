@@ -10,7 +10,7 @@ func main() {
     giveVar = printVar(myVar)
 
     //return should be 42
-    return(givenVar)
+    return(giveVar)
 }
 
 // printing the variable
