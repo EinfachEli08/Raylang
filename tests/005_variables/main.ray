@@ -4,17 +4,16 @@ extern putchar
 // Call both and return success
 func main() {
     var myVar = 42
-    var giveVar = 0
 
     // should set giveVar to the value of myVar
-    giveVar = printVar(myVar)
+    var giveVar = printVar(myVar)
 
     //return should be 42
     return(giveVar)
 }
 
 // printing the variable
-func printVar(var in) {
+func printVar(in) {
     // accessing the variable
     putchar(in)
     endline()
