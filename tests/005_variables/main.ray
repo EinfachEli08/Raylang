@@ -22,8 +22,6 @@ func printVar(var in) {
     return(in)
 }
 
-
-
 // ending the line
 func endLine() => putchar(10)
 
