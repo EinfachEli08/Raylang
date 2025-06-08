@@ -95,7 +95,7 @@ class Codegen(private val nodes:List<ASTNode>) {
                  * If the value is a number, it uses `mov rdi, value`.
                  * Otherwise, it assumes the value is a variable and uses `mov rdi, [value]`.
                  */
-                is FuncCall -> {
+                is FunctionCall -> {
                     if (externalList.contains(bodyNode.name)) {
                         output.appendLine("    mov rdi, ${bodyNode.value}")
                         output.appendLine("    call ${bodyNode.name}")
