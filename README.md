@@ -36,17 +36,17 @@ Ray was designed from scratch with a few clear goals:
 ---
 ## Ray´s Syntax
 
-| **Keyword / Symbol**         | **Description**                                                       | **Example**                                                    | **Implementation status**    |
-|------------------------------|-----------------------------------------------------------------------|----------------------------------------------------------------|------------------------------|
-| `// [text]`                  | Single-line comment                                                   | `// This is a comment`                                         | ✔ Implemented                |
-| `/* [text] */`               | Multi-line comment                                                    | `/* Multi-line \n comment */`                                  | ✔ Implemented                |
+| **Keyword / Symbol**         | **Description**                                                       | **Example**                                                    | **Implementation status**     |
+|------------------------------|-----------------------------------------------------------------------|----------------------------------------------------------------|-------------------------------|
+| `// [text]`                  | Single-line comment                                                   | `// This is a comment`                                         | ✔ Implemented                 |
+| `/* [text] */`               | Multi-line comment                                                    | `/* Multi-line \n comment */`                                  | ✔ Implemented                 |
 | `package [name]`             | Defines the module/package the file belongs to                        | `package main`                                                 | ❌ Not implemented            |
 | `import [pkg]`               | Imports classes, functions, or packages                               | `import ray.io`, `import ray.io.print()`                       | ❌ Not implemented            |
-| `extern [asm]`               | Imports external "functions" from assembly files                      | `extern putchar`, `extern putchar, printf`                     | ✔ Implemented                |
+| `extern [asm]`               | Imports external "functions" from assembly files                      | `extern putchar`, `extern putchar, printf`                     | ✔ Implemented                 |
 | `record [Name] {}`           | Defines a data structure (like a `struct`)                            | `record Person { var name : String }`                          | ❌ Not implemented            |
 | `class [Name] {}`            | Defines a class                                                       | `class Greeter {}`                                             | ❌ Not implemented            |
 | `constructor(...) {}`        | Special method for initializing a class                               | `constructor(name : String) { ... }`                           | ❌ Not implemented            |
-| `func [name](...) : [type]`  | Defines a function with parameters and return type                    | `func greet(name : String) : String`                           | ✔ Implemented                |
+| `func [name](...) : [type]`  | Defines a function with parameters and return type                    | `func greet(name : String) : String`                           | ✔ Implemented (NO TYPES YET)  |
 | `scoped [type] [name]`       | Declares a variable/function with limited (local/private) scope       | `scoped func greet(...)`                                       | ❌ Not implemented            |
 | `modify [Type] {}`           | Extension modifier to add methods to existing types                   | `modify String { func upper() => ... }`                        | ❌ Not implemented            |
 | `var [name] : [type]`        | Mutable variable declaration                                          | `var age : Int = 28`                                           | ❌ Not implemented            |
@@ -58,10 +58,10 @@ Ray was designed from scratch with a few clear goals:
 | `[var] = [var]? : [var]`     | Assigns alternative value if no value present;                        | `person.age = age? : 60`                                       | ❌ Not implemented            |
 | `[var] = [var]?!`            | Forces an Optional value to be non-optional                           | `person.age = age?!`                                           | ❌ Not implemented            |
 | `==`, `!=`, `&&`, `>=`, `<=` | Comparison and logical operators                                      | `if (x == y && y != 0)`                                        | ❌ Not implemented            |
-| `{ [code] }`                 | Scoped code block                                                     | `func test() { println("Hi") }`                                | ✔ Implemented                |
-| `=> [code]`                  | Inline/arrow function or expression                                   | `func greet() => println("Hi")`                                | ✔ Implemented                |
-| `return([value : Any ])`     | Returns a value from a function (must match declared type)            | `return("Hello")`                                              | ✔ Implemented (NO TYPES YET) |
-| `exit([value : Int])`        | Exits the program at any point. Provides an Int exit code             | `exit(0)`                                                      | ✔ Implemented (NO TYPES YET) |
+| `{ [code] }`                 | Scoped code block                                                     | `func test() { println("Hi") }`                                | ✔ Implemented (For functions) |
+| `=> [code]`                  | Inline/arrow function or expression                                   | `func greet() => println("Hi")`                                | ✔ Implemented (For functions) |
+| `return([value : Any ])`     | Returns a value from a function (must match declared type)            | `return("Hello")`                                              | ✔ Implemented (NO TYPES YET)  |
+| `exit([value : Int])`        | Exits the program at any point. Provides an Int exit code             | `exit(0)`                                                      | ✔ Implemented (NO TYPES YET)  |
 | `when ([var]) { ... }`       | Pattern matching (switch-case equivalent)                             | `when (role) { "admin" => ..., else => ... }`                  | ❌ Not implemented            |
 | `match ([var]) { ... }`      | Expression-based pattern match (returns value)                        | `val mood = match (input) { "happy" => ..., default => ... }`  | ❌ Not implemented            |
 | `default`, `else`            | Default branch in `match` or `when` expressions                       | `default => "unknown"`                                         | ❌ Not implemented            |
