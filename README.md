@@ -6,7 +6,8 @@
 
 **Ray** is a modern, expressive programming language focused on readability, productivity, and safety — without sacrificing performance. It is currently in **active development**, and the syntax is evolving based on real-world experimentation and community feedback.
 
-> ⚠️ Ray is a **prototype**. Things are subject to change.
+> [!WARNING]
+> Ray is a **prototype**. Things are subject to change.
 
 ---
 
