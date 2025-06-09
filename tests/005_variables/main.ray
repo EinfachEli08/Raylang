@@ -9,6 +9,8 @@ func main() {
     //var giveVar = printVar(myVar)
 
     //return should be 42
+    putchar(myVar) // should be *
+    endLine()
     return(myVar)
 }
 
@@ -23,6 +25,8 @@ func printVar(in) {
 }
 
 // ending the line
-func endLine() => putchar(10)
+
 
 */
+
+func endLine() => putchar(10)
