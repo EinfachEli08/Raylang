@@ -1,7 +1,7 @@
 class Codegen(private val nodes:List<ASTNode>) {
 
-    val externalList: MutableList<String> = mutableListOf()
-
+    var externalList: MutableList<String> = mutableListOf()
+    var varNodes: MutableList<VariableDef> = mutableListOf()
 
     /**
      * Generates the assembly code for the given AST nodes.
@@ -10,11 +10,44 @@ class Codegen(private val nodes:List<ASTNode>) {
     fun generateProgram(): StringBuilder {
         val output = StringBuilder()
         output.appendLine("format ELF64")
+        output.appendLine("")
 
-        generateExternals(output, nodes)
+        generateExternSection(output, nodes)
+        generateDataSection(output, nodes)
         generateFunctions(output, nodes)
 
+
         return output
+    }
+
+    /**
+     * Sammelt alle Variablennamen aus VarDef-Nodes und deklariert sie im .bss-Abschnitt.
+     */
+    fun generateDataSection(output: StringBuilder, nodes: List<ASTNode>) {
+        println(nodes)
+        varNodes = nodes.filterIsInstance<VariableDef>().toMutableList()
+        // Suche auch in Funktionen nach lokalen Variablen
+        for (node in nodes) {
+            if (node is Function) {
+                val funcName = node.name
+                for (stmt in node.body) {
+                    if (stmt is VariableDef) {
+                        // Name: funktionsname_variablenname
+                        varNodes.add(VariableDef(funcName, stmt.name, stmt.value, stmt.valueIsNumber))
+                    }
+                }
+            }
+        }
+        println(varNodes)
+        if (varNodes.isNotEmpty()) {
+            output.appendLine("section '.data' writable")
+            for (varDef in varNodes) {
+                val bytes = varDef.value.toByteArray()
+                val hexBytes = bytes.joinToString(", ") { "0x%02X".format(it) }
+                output.appendLine("    ${varDef.scope +"_"+ varDef.name} db $hexBytes")
+            }
+            output.appendLine("")
+        }
     }
 
 
@@ -42,7 +75,7 @@ class Codegen(private val nodes:List<ASTNode>) {
      * Generates the extern declarations for the functions in the given AST nodes.
      * The output is appended to the provided StringBuilder.
      */
-    fun generateExternals(output: StringBuilder, nodes: List<ASTNode>) {
+    fun generateExternSection(output: StringBuilder, nodes: List<ASTNode>) {
         for (node in nodes) {
             if (node is Extern) {
                 for (function in node.functionList) {
@@ -57,6 +90,7 @@ class Codegen(private val nodes:List<ASTNode>) {
             for (function in externalList) {
                 output.appendLine("extrn $function")
             }
+            output.appendLine("")
         }
     }
 
@@ -111,10 +145,26 @@ class Codegen(private val nodes:List<ASTNode>) {
                  * Otherwise, it assumes the value is a variable and uses `mov eax, [value]`.
                  */
                 is Return -> {
+                    println(bodyNode)
                     hasExplicitReturn = true
                     output.appendLine("    mov eax, ${bodyNode.value}    ; return ${bodyNode.value}")
                     output.appendLine("    ret")
                 }
+
+                /**
+                 * Generates assembly code for variable definitions.
+                 * Variables are initialized in the function code.
+                 */
+                is VariableDef -> {
+                    output.appendLine("    ; var ${bodyNode.name} = ${bodyNode.value}")
+                    if (bodyNode.valueIsNumber) {
+                        output.appendLine("    mov qword [${funcName +"_"+ bodyNode.name}], ${bodyNode.value}")
+                    } else {
+                        output.appendLine("    mov rax, [${bodyNode.value}]")
+                        output.appendLine("    mov qword [${bodyNode.name}], rax")
+                    }
+                }
+
                 else -> {
                     output.appendLine("    ; Unbekannter Funktions-Body-Node: $bodyNode")
                 }

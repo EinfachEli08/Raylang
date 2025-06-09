@@ -54,22 +54,18 @@ class Parser(private val tokens: List<Token>) {
                     advance()
                     val body = mutableListOf<ASTNode>()
                     parse@ while (true) {
-                        // Funktionscalls stacken mit ;
                         val functionCallNode = parseFunctionCall()
                         if (functionCallNode != null) {
                             body.add(functionCallNode)
                         }
-                        // Beenden bei ENDL, Kommentar, Multiline-Kommentar, Raydoc-Kommentar
                         if (current().type == TokenType.ENDL || current().type == TokenType.EOF ||
                             current().type == TokenType.COMMENT || current().type == TokenType.OPEN_COMMENT) {
                             break@parse
                         }
-                        // Bei ; weitermachen (stacked calls)
                         if (current().type == TokenType.SEPARATOR && current().value == ";") {
                             advance()
                             continue@parse
                         }
-                        // Sonst: Token überspringen
                         advance()
                     }
                     knownFunctions += funcName
@@ -80,11 +76,11 @@ class Parser(private val tokens: List<Token>) {
                     advance()
                     val body = mutableListOf<ASTNode>()
                     while (!(current().type == TokenType.SEPARATOR && current().value == "}")) {
-                        // Reihenfolge: Extern, Function, Return, Exit, Variable, FunctionCall
                         val externNode = parseExtern()
                         val functionNode = parseFunction()
                         val returnNode = parseReturn()
                         val exitNode = parseExit()
+                        val varDefNode = parseVarDef(funcName)
                         val functionCallNode = parseFunctionCall()
                         if (externNode != null) {
                             body.add(externNode)
@@ -96,6 +92,8 @@ class Parser(private val tokens: List<Token>) {
                             body.add(returnNode)
                         } else if (exitNode != null) {
                             body.add(exitNode)
+                        } else if (varDefNode != null) {
+                            body.add(varDefNode)
                         } else {
                             advance()
                         }
@@ -288,4 +286,37 @@ class Parser(private val tokens: List<Token>) {
             i++
         }
     }
+
+    /**
+     * Parst eine Variablendefinition: var name = value
+     */
+    fun parseVarDef(functionScope: String): VariableDef? {
+        if (current().type == TokenType.KEYWORD && current().value == "var") {
+            advance()
+            if (current().type == TokenType.IDENTIFIER) {
+                val varName = current().value
+                advance()
+                if (current().type == TokenType.OPERATOR && current().value == "=") {
+                    advance()
+                    if (current().type == TokenType.NUMBER) {
+                        val value = current().value
+                        advance()
+                        return VariableDef(functionScope, varName, value, true )
+                    } else if (current().type == TokenType.IDENTIFIER) {
+                        val value = current().value
+                        advance()
+                        return VariableDef(functionScope, varName, value, false )
+                    } else {
+                        throw IllegalArgumentException("SyntaxErr: Expected value after '=' in var definition at Row: ${current().line}, Col: ${current().column}")
+                    }
+                } else {
+                    throw IllegalArgumentException("SyntaxErr: Expected '=' after variable name in var definition at Row: ${current().line}, Col: ${current().column}")
+                }
+            } else {
+                throw IllegalArgumentException("SyntaxErr: Expected variable name after 'var' at Row: ${current().line}, Col: ${current().column}")
+            }
+        }
+        return null
+    }
+
 }

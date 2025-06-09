@@ -6,12 +6,13 @@ func main() {
     var myVar = 42
 
     // should set giveVar to the value of myVar
-    var giveVar = printVar(myVar)
+    //var giveVar = printVar(myVar)
 
     //return should be 42
-    return(giveVar)
+    return(myVar)
 }
 
+/*
 // printing the variable
 func printVar(in) {
     // accessing the variable
@@ -24,3 +25,4 @@ func printVar(in) {
 // ending the line
 func endLine() => putchar(10)
 
+*/

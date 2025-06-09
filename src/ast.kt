@@ -18,3 +18,8 @@ data class FunctionCall(val name: String, val value: String, val isNumber: Boole
 
 // a node for function definitions, e.g. func foo(x: Int) { ... }
 data class Function(val name: String, val params: List<String>, val body: List<ASTNode>) : ASTNode()
+
+
+
+// a Node for variable definitions, e.g. var x = 42
+data class VariableDef(val scope:String, val name: String, val value: String, val valueIsNumber: Boolean) : ASTNode()
