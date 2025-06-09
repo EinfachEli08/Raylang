@@ -54,7 +54,7 @@ class Parser(private val tokens: List<Token>) {
                     advance()
                     val body = mutableListOf<ASTNode>()
                     parse@ while (true) {
-                        val functionCallNode = parseFunctionCall()
+                        val functionCallNode = parseFunctionCall(funcName)
                         if (functionCallNode != null) {
                             body.add(functionCallNode)
                         }
@@ -78,10 +78,10 @@ class Parser(private val tokens: List<Token>) {
                     while (!(current().type == TokenType.SEPARATOR && current().value == "}")) {
                         val externNode = parseExtern()
                         val functionNode = parseFunction()
-                        val returnNode = parseReturn()
-                        val exitNode = parseExit()
+                        val returnNode = parseReturn(funcName)
+                        val exitNode = parseExit(funcName)
                         val varDefNode = parseVarDef(funcName)
-                        val functionCallNode = parseFunctionCall()
+                        val functionCallNode = parseFunctionCall(funcName)
                         if (externNode != null) {
                             body.add(externNode)
                         } else if (functionNode != null) {
@@ -149,7 +149,7 @@ class Parser(private val tokens: List<Token>) {
      * Parses a function call in the form of `IDENTIFIER(params)`.
      * Returns a FuncCall if successful, or null if not a function call.
      */
-    fun parseFunctionCall(): FunctionCall? {
+    fun parseFunctionCall(scope: String?): FunctionCall? {
         if (current().type == TokenType.IDENTIFIER){
             val isKnown = knownFunctions.contains(current().value)
             if(isKnown) {
@@ -157,7 +157,8 @@ class Parser(private val tokens: List<Token>) {
                 advance()
                 val params = parseFuncParams()
                 if (params != null) {
-                    return FunctionCall(identifier, params.first, params.second)
+                    //TODO: scope handling
+                    return FunctionCall(identifier, scope?:"",params.first, params.second)
                 }
             }else{
                 throw IllegalArgumentException("DefErr: Function ´${current().value}´ isnt defined yet! \n      Error at Row: ${current().line}, Col: ${current().column}")
@@ -207,13 +208,14 @@ class Parser(private val tokens: List<Token>) {
      * Parses a return statement in the form of `return (IDENTIFIER | NUMBER)`.
      * Returns a ReturnNode if successful, or null if not a return statement.
      */
-    fun parseReturn(): Return? {
+    fun parseReturn(scope: String?): Return? {
         // Expects: return ( IDENTIFIER | NUMBER )
         if (current().type == TokenType.KEYWORD && current().value == "return") {
             advance()
             val params = parseFuncParams()
             if (params != null) {
-                return Return(params.first, params.second)
+                //TODO: scope handling
+                return Return(scope?:"", params.first, params.second)
             }
         }
         return null
@@ -224,13 +226,14 @@ class Parser(private val tokens: List<Token>) {
      * Parses a return statement in the form of `exit (IDENTIFIER | NUMBER)`.
      * Returns a ExitNode if successful, or null if not a return statement.
      */
-    fun parseExit(): Exit? {
+    fun parseExit(scope: String?): Exit? {
         // Expects: exit ( IDENTIFIER | NUMBER )
         if (current().type == TokenType.KEYWORD && current().value == "exit") {
             advance()
             val params = parseFuncParams()
             if (params != null) {
-                return Exit(params.first, params.second)
+                //TODO: scope handling
+                return Exit(scope?:"",params.first, params.second)
             }
         }
         return null
@@ -247,9 +250,9 @@ class Parser(private val tokens: List<Token>) {
         while (current().type != TokenType.EOF) {
             val node = parseExtern()
                 ?: parseFunction()
-                ?: parseFunctionCall()
-                ?: parseReturn()
-                ?: parseExit()
+                ?: parseFunctionCall(null)
+                ?: parseReturn(null)
+                ?: parseExit(null)
             if (node != null) {
                 nodes.add(node)
             } else {
@@ -320,3 +323,5 @@ class Parser(private val tokens: List<Token>) {
     }
 
 }
+
+

@@ -24,7 +24,6 @@ class Codegen(private val nodes:List<ASTNode>) {
      * Sammelt alle Variablennamen aus VarDef-Nodes und deklariert sie im .bss-Abschnitt.
      */
     fun generateDataSection(output: StringBuilder, nodes: List<ASTNode>) {
-        println(nodes)
         varNodes = nodes.filterIsInstance<VariableDef>().toMutableList()
         // Suche auch in Funktionen nach lokalen Variablen
         for (node in nodes) {
@@ -32,19 +31,15 @@ class Codegen(private val nodes:List<ASTNode>) {
                 val funcName = node.name
                 for (stmt in node.body) {
                     if (stmt is VariableDef) {
-                        // Name: funktionsname_variablenname
-                        varNodes.add(VariableDef(funcName, stmt.name, stmt.value, stmt.valueIsNumber))
+                        varNodes.add(VariableDef(funcName, stmt.name, stmt.value, stmt.isNumber))
                     }
                 }
             }
         }
-        println(varNodes)
         if (varNodes.isNotEmpty()) {
             output.appendLine("section '.data' writable")
             for (varDef in varNodes) {
-                val bytes = varDef.value.toByteArray()
-                val hexBytes = bytes.joinToString(", ") { "0x%02X".format(it) }
-                output.appendLine("    ${varDef.scope +"_"+ varDef.name} db $hexBytes")
+                output.appendLine("    ${varDef.scope +"_"+ varDef.name} dq 0")
             }
             output.appendLine("")
         }
@@ -115,10 +110,12 @@ class Codegen(private val nodes:List<ASTNode>) {
                  */
                 is Exit -> {
                     output.appendLine("    mov rax, 60")
-                    if (bodyNode.isNumber) {
-                        output.appendLine("    mov rdi, ${bodyNode.value}")
+                    if (!bodyNode.isNumber) {
+                        output.appendLine("    mov rdi, [${bodyNode.scope +"_"+ bodyNode.value}]")
+
                     } else {
-                        output.appendLine("    mov rdi, [${bodyNode.value}]")
+                        output.appendLine("    mov rdi, ${bodyNode.value}")
+
                     }
                     output.appendLine("    syscall")
                 }
@@ -131,8 +128,14 @@ class Codegen(private val nodes:List<ASTNode>) {
                  */
                 is FunctionCall -> {
                     if (externalList.contains(bodyNode.name)) {
-                        output.appendLine("    mov rdi, ${bodyNode.value}")
-                        output.appendLine("    call ${bodyNode.name}")
+                        if(!bodyNode.isNumber){
+                            println(bodyNode)
+                            output.appendLine("    mov rdi, [${bodyNode.scope +"_"+ bodyNode.value}]")
+                            output.appendLine("    call ${bodyNode.name}")
+                        }else{
+                            output.appendLine("    mov rdi, ${bodyNode.value}")
+                            output.appendLine("    call ${bodyNode.name}")
+                        }
                     } else {
                         output.appendLine("    call ${bodyNode.name}")
                     }
@@ -147,7 +150,11 @@ class Codegen(private val nodes:List<ASTNode>) {
                 is Return -> {
                     println(bodyNode)
                     hasExplicitReturn = true
-                    output.appendLine("    mov eax, ${bodyNode.value}    ; return ${bodyNode.value}")
+                    if(!bodyNode.isNumber){
+                        output.appendLine("    mov rax, [${bodyNode.scope +"_"+  bodyNode.value}]    ; return [${bodyNode.scope +"_"+ bodyNode.value}]")
+                    } else {
+                        output.appendLine("    mov rax, ${bodyNode.value}    ; return ${bodyNode.value}")
+                    }
                     output.appendLine("    ret")
                 }
 
@@ -157,7 +164,7 @@ class Codegen(private val nodes:List<ASTNode>) {
                  */
                 is VariableDef -> {
                     output.appendLine("    ; var ${bodyNode.name} = ${bodyNode.value}")
-                    if (bodyNode.valueIsNumber) {
+                    if (bodyNode.isNumber) {
                         output.appendLine("    mov qword [${funcName +"_"+ bodyNode.name}], ${bodyNode.value}")
                     } else {
                         output.appendLine("    mov rax, [${bodyNode.value}]")
