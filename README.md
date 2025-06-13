@@ -85,11 +85,11 @@ Ray was designed from scratch with a few clear goals:
   var name? : String                         // Optional declaration
   name? = "Ray"                              // valid
   name? = null                               // also valid
-  let safeName = name? : "No Name provided"  // valid as well
+  var safeName = name? : "No Name provided"  // valid as well
 
   // you can force optionals to return null if no value was provided. Dont do this! (but you can)
-  let newName = name?!                       // valid but dangerous
-  let newName = name?                        // invalid
+  var newName = name?!                       // valid but dangerous
+  var newName = name?                        // invalid
   ```
 
 ### Inline Functions
