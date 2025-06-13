@@ -327,7 +327,7 @@ cd Raylang
 * [ ] ...
 * [ ] Bootstrapping
 * [ ] ...
-* [ ] Main scope as default scope
+* [ ] Main scope as default scope (making func main() optional)
 * [ ] Scoped variables
 * [ ] Type safety
 * [ ] Types
