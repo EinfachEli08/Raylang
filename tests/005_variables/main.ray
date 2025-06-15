@@ -6,27 +6,23 @@ func main() {
     var myVar = 42
 
     // should set giveVar to the value of myVar
-    //var giveVar = printVar(myVar)
+    printVar(myVar)
 
     //return should be 42
-    putchar(myVar) // should be *
-    endLine()
     return(myVar)
 }
 
-/*
 // printing the variable
 func printVar(in) {
     // accessing the variable
-    putchar(in)
-    endline()
-    // returning the variable
-    return(in)
+    putCharacter(in)
+    endLine()
+    //returning the variable
+    //return(in)
 }
 
+// nested testing
+func putCharacter(c) => putchar(c);
+
 // ending the line
-
-
-*/
-
 func endLine() => putchar(10)
