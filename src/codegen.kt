@@ -22,6 +22,13 @@ class Codegen(private val nodes:List<ASTNode>) {
     }
 
 
+    /**
+     * Loads an argument into a specified register.
+     * Handles different types of arguments such as dereferenced variables, references, literals, etc.
+     * @param arg The argument to load.
+     * @param reg The register to load the argument into.
+     * @param output The StringBuilder to append the assembly code to.
+     */
     fun loadArgToReg(arg: Arg, reg: String, output: StringBuilder) {
         when(arg) {
             is Arg.Deref -> {
@@ -34,6 +41,9 @@ class Codegen(private val nodes:List<ASTNode>) {
             is Arg.AutoVar -> output.appendLine(        "    mov $reg, [rbp-${arg.index * 8}]"  )
             is Arg.Literal -> output.appendLine(        "    mov $reg, ${arg.value}"            )
             is Arg.DataOffset -> output.appendLine(     "    mov $reg, dat+${arg.offset}"       )
+            is Arg.Bogus -> {
+
+            }
         }
     }
 
@@ -66,11 +76,11 @@ class Codegen(private val nodes:List<ASTNode>) {
                 val funcName = node.name
                 for (stmt in node.body) {
                     if (stmt is VariableDef) {
-                        varNodes.add(VariableDef(funcName, stmt.name, stmt.value, stmt.isNumber))
+                        varNodes.add(VariableDef(funcName, stmt.name, stmt.arg))
                     }
                 }
                 for (stmt in node.params) {
-                    varNodes.add(VariableDef(funcName, stmt, "", false))
+                    varNodes.add(VariableDef(funcName, stmt, Arg.Bogus))
                 }
             }
         }
@@ -155,12 +165,8 @@ class Codegen(private val nodes:List<ASTNode>) {
         }
 
         val paramsCount = funcParams.size
-
-       //& require(varsCount >= paramsCount)
         val registers: Array<String> = arrayOf("rdi", "rsi", "rdx", "rcx", "r8", "r9")
-
         var i = 0
-
         while (i < minOf(paramsCount, registers.size)) {
             output.appendLine("    mov QWORD [rbp-${(i + 1) * 8}], ${registers[i]}")
             i += 1
@@ -170,7 +176,7 @@ class Codegen(private val nodes:List<ASTNode>) {
             output.appendLine("    mov QWORD [rbp-${(j + 1) * 8}], rax")
         }
 
-        println(funcName +"_"+ funcParams)
+        val varOffsetMap = buildVarOffsetMap(funcParams, funcBody)
 
         var hasExplicitReturn = false
 
@@ -186,13 +192,7 @@ class Codegen(private val nodes:List<ASTNode>) {
                  */
                 is Exit -> {
                     output.appendLine("    mov rax, 60")
-                    if (!operation.isNumber) {
-                        output.appendLine("    mov rdi, [${operation.scope +"_"+ operation.value}]")
-
-                    } else {
-                        output.appendLine("    mov rdi, ${operation.value}")
-
-                    }
+                    loadArgToReg(operation.arg, "rdi", output)
                     output.appendLine("    syscall")
                 }
 
@@ -203,18 +203,10 @@ class Codegen(private val nodes:List<ASTNode>) {
                  * Otherwise, it assumes the value is a variable and uses `mov rdi, [value]`.
                  */
                 is FunctionCall -> {
-                    if (externalList.contains(operation.name)) {
-                        if(!operation.isNumber){
-                            println(operation)
-                            output.appendLine("    mov rdi, [${operation.scope +"_"+ operation.value}]")
-                            output.appendLine("    call ${operation.name}")
-                        }else{
-                            output.appendLine("    mov rdi, ${operation.value}")
-                            output.appendLine("    call ${operation.name}")
-                        }
-                    } else {
-                        output.appendLine("    call ${operation.name}")
-                    }
+                    // Funktion erwartet jetzt nur noch ein Arg, nicht args-Liste
+                    loadArgToReg(operation.arg, "rdi", output)
+                    output.appendLine("    mov al, 0") // x86_64 Linux ABI: Anzahl der Floating-Point-Args in al
+                    output.appendLine("    call ${operation.name}")
                 }
 
 
@@ -226,11 +218,10 @@ class Codegen(private val nodes:List<ASTNode>) {
                 is Return -> {
                     println(operation)
                     hasExplicitReturn = true
-                    if(!operation.isNumber){
-                        output.appendLine("    mov rax, [${operation.scope +"_"+  operation.value}]    ; return [${operation.scope +"_"+ operation.value}]")
-                    } else {
-                        output.appendLine("    mov rax, ${operation.value}    ; return ${operation.value}")
+                    if(operation.arg != Arg.Bogus) {
+                        loadArgToReg(operation.arg, "rax", output)
                     }
+                    output.appendLine("    mov rsp, rbp")
                     output.appendLine("    pop rbp")
                     output.appendLine("    ret")
                 }
@@ -240,17 +231,13 @@ class Codegen(private val nodes:List<ASTNode>) {
                  * Variables are initialized in the function code.
                  */
                 is VariableDef -> {
-                    output.appendLine("    ; var ${operation.name} = ${operation.value}")
-                    if (operation.isNumber) {
-                        output.appendLine("    mov qword [${funcName +"_"+ operation.name}], ${operation.value}")
-                    } else {
-                        output.appendLine("    mov rax, [${operation.value}]")
-                        output.appendLine("    mov qword [${operation.name}], rax")
-                    }
+                    loadArgToReg(operation.arg, "rax", output)
+                    val offset = varOffsetMap[operation.name] ?: error("Variable ${operation.name} not found in offset map!")
+                    output.appendLine("    mov QWORD [rbp-${offset}], rax")
                 }
 
                 else -> {
-                    output.appendLine("    ; Unbekannter Funktions-Body-Node: $operation")
+                    output.appendLine("    ; GEN-ERR: Unknown Func-Body-Node: $operation")
                 }
             }
         }
@@ -261,5 +248,24 @@ class Codegen(private val nodes:List<ASTNode>) {
             output.appendLine("    pop rbp")
             output.appendLine("    ret")
         }
+    }
+
+    /**
+     * Hilfsfunktion: Erzeugt eine Map von Variablennamen auf Stack-Offsets (rbp-Offset) für einen Funktionskontext.
+     */
+    fun buildVarOffsetMap(params: List<String>, body: List<ASTNode>): Map<String, Int> {
+        val map = mutableMapOf<String, Int>()
+        var offset = 8
+        for (param in params) {
+            map[param] = offset
+            offset += 8
+        }
+        for (node in body) {
+            if (node is VariableDef) {
+                map[node.name] = offset
+                offset += 8
+            }
+        }
+        return map
     }
 }

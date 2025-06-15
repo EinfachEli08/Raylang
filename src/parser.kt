@@ -113,31 +113,37 @@ class Parser(private val tokens: List<Token>) {
     /**
      * Expects a function parameter in the form of (IDENTIFIER | NUMBER).
      */
-    private fun parseFuncParams(): Pair<String, Boolean>? {
+    private fun parseFuncParams(): Arg? {
         if (current().type == TokenType.SEPARATOR && current().value == "(") {
             advance()
             // Leere Klammern erlauben
             if (current().type == TokenType.SEPARATOR && current().value == ")") {
-                val closeParenToken = current()
                 advance()
                 // Check for a line break, EOF, Kommentar oder ; nach der schließenden Klammer
                 if (current().type != TokenType.ENDL && current().type != TokenType.EOF && current().type != TokenType.COMMENT && current().type != TokenType.OPEN_COMMENT && !(current().type == TokenType.SEPARATOR && current().value == ";")) {
-                    throw IllegalArgumentException("SyntaxErr: No Linebreak or ; after function! Error at: Row: ${closeParenToken.line}, Col: ${closeParenToken.column + closeParenToken.value.length}")
+                    throw IllegalArgumentException("SyntaxErr: No Linebreak or ; after function! Error at: Row: ${current().line}, Col: ${current().column + current().value.length}")
                 }
-                return Pair("", false)
+                return Arg.Bogus
             }
-            if (current().type == TokenType.IDENTIFIER || current().type == TokenType.NUMBER) {
+            if (current().type == TokenType.IDENTIFIER) {
                 val value = current().value
-                val isNumber = current().type == TokenType.NUMBER
                 advance()
                 if (current().type == TokenType.SEPARATOR && current().value == ")") {
-                    val closeParenToken = current()
                     advance()
-                    // Erlaube auch ; als Abschluss für gestapelte Funktionscalls
                     if (current().type != TokenType.ENDL && current().type != TokenType.EOF && current().type != TokenType.COMMENT && current().type != TokenType.OPEN_COMMENT && !(current().type == TokenType.SEPARATOR && current().value == ";")) {
-                        throw IllegalArgumentException("SyntaxErr: No Linebreak or ; after function! Error at: Row: ${closeParenToken.line}, Col: ${closeParenToken.column + closeParenToken.value.length}")
+                        throw IllegalArgumentException("SyntaxErr: No Linebreak or ; after function! Error at: Row: ${current().line}, Col: ${current().column + current().value.length}")
                     }
-                    return Pair(value, isNumber)
+                    return Arg.RefAutoVar(0) // Platzhalter: Index 0, ggf. anpassen
+                }
+            } else if (current().type == TokenType.NUMBER) {
+                val value = current().value
+                advance()
+                if (current().type == TokenType.SEPARATOR && current().value == ")") {
+                    advance()
+                    if (current().type != TokenType.ENDL && current().type != TokenType.EOF && current().type != TokenType.COMMENT && current().type != TokenType.OPEN_COMMENT && !(current().type == TokenType.SEPARATOR && current().value == ";")) {
+                        throw IllegalArgumentException("SyntaxErr: No Linebreak or ; after function! Error at: Row: ${current().line}, Col: ${current().column + current().value.length}")
+                    }
+                    return Arg.Literal(value.toLong())
                 }
             }
         }
@@ -158,7 +164,7 @@ class Parser(private val tokens: List<Token>) {
                 val params = parseFuncParams()
                 if (params != null) {
                     //TODO: scope handling
-                    return FunctionCall(identifier, scope?:"",params.first, params.second)
+                    return FunctionCall(identifier, scope?:"",params)
                 }
             }else{
                 throw IllegalArgumentException("DefErr: Function ´${current().value}´ isnt defined yet! \n      Error at Row: ${current().line}, Col: ${current().column}")
@@ -215,7 +221,7 @@ class Parser(private val tokens: List<Token>) {
             val params = parseFuncParams()
             if (params != null) {
                 //TODO: scope handling
-                return Return(scope?:"", params.first, params.second)
+                return Return(scope?:"", params)
             }
         }
         return null
@@ -233,7 +239,7 @@ class Parser(private val tokens: List<Token>) {
             val params = parseFuncParams()
             if (params != null) {
                 //TODO: scope handling
-                return Exit(scope?:"",params.first, params.second)
+                return Exit(scope?:"",params)
             }
         }
         return null
@@ -301,17 +307,21 @@ class Parser(private val tokens: List<Token>) {
                 advance()
                 if (current().type == TokenType.OPERATOR && current().value == "=") {
                     advance()
-                    if (current().type == TokenType.NUMBER) {
-                        val value = current().value
-                        advance()
-                        return VariableDef(functionScope, varName, value, true )
-                    } else if (current().type == TokenType.IDENTIFIER) {
-                        val value = current().value
-                        advance()
-                        return VariableDef(functionScope, varName, value, false )
-                    } else {
-                        throw IllegalArgumentException("SyntaxErr: Expected value after '=' in var definition at Row: ${current().line}, Col: ${current().column}")
+                    // Nutze parseFuncParams-Logik für den rechten Wert
+                    val arg = when {
+                        current().type == TokenType.NUMBER -> {
+                            val value = current().value
+                            advance()
+                            Arg.Literal(value.toLong())
+                        }
+                        current().type == TokenType.IDENTIFIER -> {
+                            val value = current().value
+                            advance()
+                            Arg.RefAutoVar(0) // Platzhalter, ggf. anpassen
+                        }
+                        else -> throw IllegalArgumentException("SyntaxErr: Expected value after '=' in var definition at Row: ${current().line}, Col: ${current().column}")
                     }
+                    return VariableDef(functionScope, varName, arg)
                 } else {
                     throw IllegalArgumentException("SyntaxErr: Expected '=' after variable name in var definition at Row: ${current().line}, Col: ${current().column}")
                 }
@@ -323,5 +333,3 @@ class Parser(private val tokens: List<Token>) {
     }
 
 }
-
-
