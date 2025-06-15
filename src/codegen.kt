@@ -22,28 +22,19 @@ class Codegen(private val nodes:List<ASTNode>) {
     }
 
 
-    fun loadNodeToReg(arg: ASTNode, reg:  String, output: StringBuilder) {
+    fun loadArgToReg(arg: Arg, reg: String, output: StringBuilder) {
         when(arg) {
-            /*
-            arg.Deref(index) -> {
-                sb.append(output, c!("    mov %s, [rbp-%zu]\n"), reg, index*8);
-                sb.append(output, c!("    mov %s, [%s]\n"), reg, reg)
+            is Arg.Deref -> {
+                output.appendLine(                      "    mov $reg, [rbp-${arg.index * 8}]"  )
+                output.appendLine(                      "    mov $reg, [${reg}]"                )
             }
-            arg.RefAutoVar(index)  -> sb.append(output, c!("    lea %s, [rbp-%zu]\n"), reg, index*8),
-            arg.RefExternal(name)  -> sb.append(output, c!("    lea %s, [_%s]\n"), reg, name),
-            arg.External(name)     -> sb.append(output, c!("    mov %s, [_%s]\n"), reg, name),
-            arg.AutoVar(index)     -> sb.append(output, c!("    mov %s, [rbp-%zu]\n"), reg, index*8),
-            arg.Literal(value)     -> sb.append(output, c!("    mov %s, %ld\n"), reg, value),
-            arg.DataOffset(offset) -> sb.append(output, c!("    mov %s, dat+%zu\n"), reg, offset),
-             */
-           // is Extern -> output.appendLine("    mov $reg, [${arg.}]")
-            is Exit -> TODO()
-            is Extern -> TODO()
-            is Function -> TODO()
-            is FunctionCall -> TODO()
-            is Return -> TODO()
-            is VariableDef -> TODO()
-        };
+            is Arg.RefAutoVar -> output.appendLine(     "    lea $reg, [rbp-${arg.index * 8}]"  )
+            is Arg.RefExternal -> output.appendLine(    "    lea $reg, [_${arg.name}]"          )
+            is Arg.External -> output.appendLine(       "    mov $reg, [_${arg.name}]"          )
+            is Arg.AutoVar -> output.appendLine(        "    mov $reg, [rbp-${arg.index * 8}]"  )
+            is Arg.Literal -> output.appendLine(        "    mov $reg, ${arg.value}"            )
+            is Arg.DataOffset -> output.appendLine(     "    mov $reg, dat+${arg.offset}"       )
+        }
     }
 
 

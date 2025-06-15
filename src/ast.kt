@@ -23,3 +23,14 @@ data class Function(val name: String, val params: List<String>, val body: List<A
 
 // a Node for variable definitions, e.g. var x = 42
 data class VariableDef(val scope:String, val name: String, val value: String, val isNumber: Boolean) : ASTNode()
+
+
+sealed class Arg {
+    data class Deref(val index: Int) : Arg()
+    data class RefAutoVar(val index: Int) : Arg()
+    data class RefExternal(val name: String) : Arg()
+    data class External(val name: String) : Arg()
+    data class AutoVar(val index: Int) : Arg()
+    data class Literal(val value: Long) : Arg()
+    data class DataOffset(val offset: Int) : Arg()
+}
