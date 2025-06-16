@@ -62,6 +62,7 @@ Ray was designed from scratch with a few clear goals:
 | `{ [code] }`                 | Scoped code block                                                     | `func test() { println("Hi") }`                                | ✔ Implemented (For functions) | Kotlin                        |
 | `=> [code]`                  | Inline/arrow function or expression                                   | `func greet() => println("Hi")`                                | ✔ Implemented (For functions) | Kotlin                        |
 | `return([value : Any ])`     | Returns a value from a function (must match declared type)            | `return("Hello")`                                              | ✔ Implemented (NO TYPES YET)  | Kotlin                        |
+| `asm( ASSEMBLY )`            | Directly access assembly as functions                                 | `asm( mov rax, 61 )`                                           | ❌ Not implemented            |                               |
 | `exit([value : Int])`        | Exits the program at any point. Provides an Int exit code             | `exit(0)`                                                      | ✔ Implemented (NO TYPES YET)  | Kotlin                        |
 | `when ([var]) { ... }`       | Pattern matching (switch-case equivalent)                             | `when (role) { "admin" => ..., else => ... }`                  | ❌ Not implemented            |                               | 
 | `match ([var]) { ... }`      | Expression-based pattern match (returns value)                        | `val mood = match (input) { "happy" => ..., default => ... }`  | ❌ Not implemented            |                               | 
@@ -320,6 +321,7 @@ cd Raylang
 * [X] Functions
 * [ ] Variable declaration
 * [ ] Variable operations
+* [ ] Assembly functions
 * [ ] If statements
 * [ ] loops
 * [ ] records
@@ -353,19 +355,20 @@ cd Raylang
 * [ ] REPL support
 ---
 ## Current Progress
-| Test                                                       | Status       | Passed at  |
-|------------------------------------------------------------|--------------|------------|
-| 000: Exiting                                               | Passed       | 04.06.2025 |
-| 001: Comments                                              | Passed       | 05.06.2025 |
-| 002: Externals                                             | Passed       | 06.06.2025 |
-| 003: Main entry point /w return                            | Passed       | 07.06.2025 |
-| 004: Functions calling Functions                           | Passed       | 07.07.2025 |
-| 005: Declaring and using variables between functions       | Not passed   |            |
-| 006: Adding, Subtracting, Multiplying and (maybe) division | Not passed   |            |
-| 007: If statements                                         | Non-existent |            |
-| 008: For loops                                             | Non-existent |            |
-| XXX: More tests comming soon                               | TBA          |            |
----
+| Test                                                       | Status       | Implementation Status  |Passed at   |
+|------------------------------------------------------------|--------------|------------------------|------------|
+| 000: Exiting                                               | Passed       | Done                   | 04.06.2025 |
+| 001: Comments                                              | Passed       | Done                   | 05.06.2025 |
+| 002: Externals                                             | Passed       | Done                   | 06.06.2025 |
+| 003: Main entry point /w return                            | Passed       | Done                   | 07.06.2025 |
+| 004: Functions calling Functions                           | Passed       | Done                   | 07.07.2025 |
+| 005: Declaring and using variables between functions       | Not passed   | Active Development     |            |
+| 006: Adding, Subtracting, Multiplying and (maybe) division | Not passed   | Passed at              |            |
+| 007: Inline Assembly                                       | Non-existent | Passed at              |            |
+| 008: If statements                                         | Non-existent | Passed at              |            |
+| 009: For loops                                             | Non-existent | Passed at              |            |
+| XXX: More tests comming soon                               | TBA          | Passed at              |            |
+---  
 
 ## Contributing
 
