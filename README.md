@@ -370,6 +370,14 @@ cd Raylang
 | XXX: More tests comming soon                               | TBA          | Passed at              |            |
 ---  
 
+## Other projects
+
+* RayLight (Syntax highliting for .ray files)
+  - Supports [VSCode](https://github.com/EinfachEli08/RayLight-code) (Indev)
+  - Other IDE´s comming soon
+
+---
+
 ## Contributing
 
 Ray is a community-driven experiment. Contributions are welcome!
