@@ -71,7 +71,7 @@ Ray was designed from scratch with a few clear goals:
 | `[var] : T { ... }`          | Declares a variable with attached scope. `it` is the value reference. | `var refreshCounter : Int { ... }     `                        | ❌ Not implemented            |                               | 
 | `get()`                      | Defines logic for reading the variable                                | `get(){ ... return( ... it) }              `                   | ❌ Not implemented            |                               | 
 | `set(new : T)`               | Defines logic for setting the variable                                | `set(input : String){ ... it = input ... }              `      | ❌ Not implemented            |                               | 
-| `.function()`                | Class/Record/Extension method call                                    | `"hello".shout()`                                              | ❌ Not implemented            |                               | 
+| `.function()`                | Class/Record/Type/Extension method call                               | `"hello".shout()`                                              | ❌ Not implemented            |                               | 
 
 ---
 
