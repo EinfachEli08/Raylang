@@ -1,7 +1,6 @@
 class Codegen(private val nodes:List<ASTNode>) {
 
     var externalList: MutableList<String> = mutableListOf()
-    var varNodes: MutableList<VariableDef> = mutableListOf()
 
     /**
      * Generates the assembly code for the given AST nodes.
@@ -15,7 +14,10 @@ class Codegen(private val nodes:List<ASTNode>) {
         println(nodes)
 
         generateExternSection(output, nodes)
+
+        output.appendLine("section '.data' writable")
         generateDataSection(output, nodes)
+
         generateFunctions(output, nodes)
 
         return output
@@ -69,7 +71,7 @@ class Codegen(private val nodes:List<ASTNode>) {
      * @param nodes The list of AST nodes to process.
      */
     fun generateDataSection(output: StringBuilder, nodes: List<ASTNode>) {
-        varNodes = nodes.filterIsInstance<VariableDef>().toMutableList()
+        var varNodes = nodes.filterIsInstance<VariableDef>().toMutableList()
         // Suche auch in Funktionen nach lokalen Variablen
         for (node in nodes) {
             if (node is Function) {
@@ -79,15 +81,21 @@ class Codegen(private val nodes:List<ASTNode>) {
                         varNodes.add(VariableDef(funcName, stmt.name, stmt.arg))
                     }
                 }
-                for (stmt in node.params) {
-                    varNodes.add(VariableDef(funcName, stmt, Arg.Bogus))
-                }
             }
         }
         if (varNodes.isNotEmpty()) {
-            output.appendLine("section '.data' writable")
             for (varDef in varNodes) {
-                output.appendLine("    ${varDef.scope +"_"+ varDef.name} dq 0")
+                // this is fine
+                val rawData = varDef.arg.toString().toByteArray()
+
+                output.append("dat: db ")
+                for (i in rawData.indices) {
+                    if (i > 0) {
+                        output.append(",")
+                    }
+                    output.append(String.format("0x%02X", rawData[i]))
+                }
+                output.appendLine()
             }
             output.appendLine("")
         }
