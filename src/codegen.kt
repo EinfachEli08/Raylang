@@ -13,12 +13,11 @@ class Codegen(private val nodes:List<ASTNode>) {
 
         println(nodes)
 
+        generateFunctions(output, nodes)
         generateExternSection(output, nodes)
 
-        output.appendLine("section '.data' writable")
-        generateDataSection(output, nodes)
-
-        generateFunctions(output, nodes)
+        output.appendLine("section \".data\"")
+        //generateDataSection(output, nodes) Removed, as it is not used in the current implementation.
 
         return output
     }
@@ -114,7 +113,34 @@ class Codegen(private val nodes:List<ASTNode>) {
         val functionNodes = nodes.filterIsInstance<Function>()
         for (func in functionNodes) {
             println("func:" + func.name +"_"+ func.params)
-            generateFunction(func.name, func.params,nodes.filterIsInstance<VariableDef>().size,func.body, output)
+            if( func.name == "endLine"){
+                println("================")
+                println(func)
+                println("================")
+            }
+
+            // Fix this in parsing, but for now we need to get the language running
+            var varDefCount = 0
+            for (i in func.body.indices) {
+                val operation = func.body[i]
+                when (operation) {
+                    is FunctionCall -> {
+                        varDefCount++
+                    }
+
+                    is Exit -> {}
+                    is Extern -> {}
+                    is Function -> {}
+                    is Return -> {}
+                    is VariableDef -> {}
+                }
+            }
+
+            println(varDefCount)
+
+
+            val variableCount = func.body.filterIsInstance<VariableDef>().size + varDefCount
+            generateFunction(func.name, func.params,variableCount,func.body, output)
         }
 
         val mainFunction = functionNodes.find { it.name == "main" }
@@ -144,7 +170,7 @@ class Codegen(private val nodes:List<ASTNode>) {
         }
         if (externalList.isNotEmpty()) {
             for (function in externalList) {
-                output.appendLine("extrn $function")
+                output.appendLine("extrn '$function' as _${function}")
             }
             output.appendLine("")
         }
@@ -160,11 +186,13 @@ class Codegen(private val nodes:List<ASTNode>) {
      * @param output The StringBuilder to append the assembly code to.
      */
     fun generateFunction(funcName: String, funcParams:List<String>, varsCount:Int,funcBody: List<ASTNode>,output: StringBuilder) {
-        val stackSize = alignBytes(varsCount * 8, 16);
+        val stackSize = alignBytes(varsCount * 8, 16)
+
+        println("size: $stackSize for $funcName with $varsCount vars")
+
         output.appendLine()
-        output.appendLine("; --- $funcName ---")
-        output.appendLine("public $funcName")
-        output.appendLine("$funcName:")
+        output.appendLine("public _$funcName as '$funcName'")
+        output.appendLine("_$funcName:")
         output.appendLine("    push rbp")
         output.appendLine("    mov rbp, rsp")
 
@@ -185,8 +213,6 @@ class Codegen(private val nodes:List<ASTNode>) {
         }
 
         val varOffsetMap = buildVarOffsetMap(funcParams, funcBody)
-
-        var hasExplicitReturn = false
 
         for (i in funcBody.indices) {
             output.appendLine(".op_${i}:")
@@ -214,7 +240,12 @@ class Codegen(private val nodes:List<ASTNode>) {
                     // Funktion erwartet jetzt nur noch ein Arg, nicht args-Liste
                     loadArgToReg(operation.arg, "rdi", output)
                     output.appendLine("    mov al, 0") // x86_64 Linux ABI: Anzahl der Floating-Point-Args in al
-                    output.appendLine("    call ${operation.name}")
+                    output.appendLine("    call _${operation.name}")
+                    //if( stack_args_count > 0) {
+                    //    output.appendLine("    add rsp, $stack_args_size")
+                    //}
+                    //output.appendLine("    mov [rbp-${operation.result*8}], rax")
+                    output.appendLine("    mov [rbp-16], rax")
                 }
 
 
@@ -225,7 +256,6 @@ class Codegen(private val nodes:List<ASTNode>) {
                  */
                 is Return -> {
                     println(operation)
-                    hasExplicitReturn = true
                     if(operation.arg != Arg.Bogus) {
                         loadArgToReg(operation.arg, "rax", output)
                     }
@@ -249,13 +279,11 @@ class Codegen(private val nodes:List<ASTNode>) {
                 }
             }
         }
-        if (!hasExplicitReturn) {
-            output.appendLine(".op_${funcBody.size}:")
-            output.appendLine("    mov rax, 0")
-            output.appendLine("    mov rsp, rbp")
-            output.appendLine("    pop rbp")
-            output.appendLine("    ret")
-        }
+        output.appendLine(".op_${funcBody.size}:")
+        output.appendLine("    mov rax, 0")
+        output.appendLine("    mov rsp, rbp")
+        output.appendLine("    pop rbp")
+        output.appendLine("    ret")
     }
 
     /**

@@ -1,16 +1,11 @@
 // importing putchar from gcc
 extern putchar
 
-// Call both and return success
-func main() {
-    var myVar = 42
+// ending the line
+func endLine() => putchar(10)
 
-    // should set giveVar to the value of myVar
-    printVar(myVar)
-
-    //return should be 42
-    return(myVar)
-}
+// nested testing
+func putCharacter(c) => putchar(c);
 
 // printing the variable
 func printVar(in) {
@@ -21,8 +16,13 @@ func printVar(in) {
     //return(in)
 }
 
-// nested testing
-func putCharacter(c) => putchar(c);
+// Call both and return success
+func main() {
+    var myVar = 42
 
-// ending the line
-func endLine() => putchar(10)
+    // should set giveVar to the value of myVar
+    printVar(myVar)
+
+    //return should be 42
+    return(myVar)
+}

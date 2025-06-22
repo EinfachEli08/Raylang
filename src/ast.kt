@@ -7,10 +7,8 @@ data class Return(val scope: String, val arg: Arg) : ASTNode()
 data class Exit(val scope: String, val arg: Arg) : ASTNode()
 
 
-
 // a node for extern lines, e.g. extern putchar
-data class Extern(val functionList:List<String>) : ASTNode()
-
+data class Extern(val functionList: List<String>) : ASTNode()
 
 
 // a node for function calls, e.g. putchar(x) or putchar("A")
@@ -18,7 +16,6 @@ data class FunctionCall(val name: String, val scope: String, val arg: Arg) : AST
 
 // a node for function definitions, e.g. func foo(x) { ... }
 data class Function(val name: String, val params: List<String>, val body: List<ASTNode>) : ASTNode()
-
 
 
 // a Node for variable definitions, e.g. var x = 42
