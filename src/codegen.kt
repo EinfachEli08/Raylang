@@ -144,7 +144,9 @@ class Codegen(private val nodes:List<ASTNode>) {
 
             println(varDefCount)
 
-            val variableCount = func.body.filterIsInstance<VariableDef>().size + varDefCount
+            val variableCount = func.body.filterIsInstance<VariableDef>().size +
+                    func.body.filterIsInstance<MultiVariableDef>().sumOf { it.names.size } +
+                    varDefCount
             generateFunction(func.name, func.params, variableCount, func.body, output)
         }
 
@@ -225,9 +227,9 @@ class Codegen(private val nodes:List<ASTNode>) {
             when (operation) {
 
                 /**
-                 * Generates assembly code for an extern function call.
-                 * If the function is in the external list, it uses `mov rdi, value`
-                 * before calling the function.
+                 * Generates assembly code for an exit function call.
+                 * If the value is a number, it uses `mov rdi, value`.
+                 * Otherwise, it assumes the value is a variable and uses `mov rdi, [value]`.
                  */
                 is Exit -> {
                     output.appendLine("    mov rax, 60")
@@ -237,16 +239,34 @@ class Codegen(private val nodes:List<ASTNode>) {
 
 
                 /**
-                 * Generates assembly code for an exit function call.
-                 * If the value is a number, it uses `mov rdi, value`.
-                 * Otherwise, it assumes the value is a variable and uses `mov rdi, [value]`.
+                 * Generates assembly code for a function call.
+                 * Handles multiple arguments by loading them into appropriate registers.
                  */
                 is FunctionCall -> {
-                    loadArgToReg(operation.arg, "rdi", output, varOffsetMap)
+                    val argRegisters = arrayOf("rdi", "rsi", "rdx", "rcx", "r8", "r9")
+
+                    // Load arguments into registers
+                    for (j in operation.args.indices) {
+                        if (j < argRegisters.size) {
+                            loadArgToReg(operation.args[j], argRegisters[j], output, varOffsetMap)
+                        } else {
+                            // Handle stack arguments for more than 6 parameters
+                            loadArgToReg(operation.args[j], "rax", output, varOffsetMap)
+                            output.appendLine("    push rax")
+                        }
+                    }
+
                     output.appendLine("    mov al, 0")
                     output.appendLine("    call _${operation.name}")
 
-                    val resultOffset = (funcParams.size + funcBody.filterIsInstance<VariableDef>().size + 1) * 8
+                    // Clean up stack if we pushed arguments
+                    val stackArgs = maxOf(0, operation.args.size - 6)
+                    if (stackArgs > 0) {
+                        output.appendLine("    add rsp, ${stackArgs * 8}")
+                    }
+
+                    val resultOffset = (funcParams.size + funcBody.filterIsInstance<VariableDef>().size +
+                            funcBody.filterIsInstance<MultiVariableDef>().sumOf { it.names.size } + 1) * 8
                     output.appendLine("    mov [rbp-${resultOffset}], rax")
                 }
 
@@ -276,6 +296,27 @@ class Codegen(private val nodes:List<ASTNode>) {
                     output.appendLine("    mov QWORD [rbp-${offset}], rax")
                 }
 
+                /**
+                 * Generates assembly code for multiple variable declarations.
+                 * Initializes all variables to 0.
+                 */
+                is MultiVariableDef -> {
+                    for (varName in operation.names) {
+                        val offset = varOffsetMap[varName] ?: error("Variable $varName not found in offset map!")
+                        output.appendLine("    mov QWORD [rbp-${offset}], 0")
+                    }
+                }
+
+                /**
+                 * Generates assembly code for variable assignments.
+                 * Assigns a value to an existing variable.
+                 */
+                is VariableAssign -> {
+                    loadArgToReg(operation.arg, "rax", output, varOffsetMap)
+                    val offset = varOffsetMap[operation.name] ?: error("Variable ${operation.name} not found in offset map!")
+                    output.appendLine("    mov QWORD [rbp-${offset}], rax")
+                }
+
                 else -> {
                     output.appendLine("    ; GEN-ERR: Unknown Func-Body-Node: $operation")
                 }
@@ -295,15 +336,26 @@ class Codegen(private val nodes:List<ASTNode>) {
         val map = mutableMapOf<String, Int>()
         var offset = 8
 
+        // Add function parameters
         for (param in params) {
             map[param] = offset
             offset += 8
         }
 
+        // Add local variables from VariableDef nodes
         for (node in body) {
-            if (node is VariableDef) {
-                map[node.name] = offset
-                offset += 8
+            when (node) {
+                is VariableDef -> {
+                    map[node.name] = offset
+                    offset += 8
+                }
+                is MultiVariableDef -> {
+                    for (varName in node.names) {
+                        map[varName] = offset
+                        offset += 8
+                    }
+                }
+                else -> {}
             }
         }
 

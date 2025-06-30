@@ -8,11 +8,11 @@ func endLine() => putchar(10)
 func putCharacter(c) => putchar(c);
 
 // printing the variable
-func printVar(in, another) {
+func printVars(in, another) {
     // accessing the variables
     putCharacter(in)
     putCharacter(another)
-    endLine()
+
     //returning the variable
     //return(in)
 }
@@ -25,9 +25,9 @@ func main() {
     yourVar = 69
 
     // should set giveVar to the value of myVar
-    printVar(myVar, yourVar)
-
+    printVars(myVar, yourVar)
     putchar(myVar)
+    endLine()
 
     //return should be 42
     return(myVar)

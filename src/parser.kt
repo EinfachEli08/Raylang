@@ -225,8 +225,14 @@ class Parser(private val tokens: List<Token>) {
                 body.add(stmt)
 
                 // Handle variable definitions (add to local scope)
-                if (stmt is VariableDef) {
-                    context.localVars.add(stmt.name)
+                when (stmt) {
+                    is VariableDef -> {
+                        context.localVars.add(stmt.name)
+                    }
+                    is MultiVariableDef -> {
+                        context.localVars.addAll(stmt.names)
+                    }
+                    else -> {}
                 }
             } else {
                 advance() // Skip unknown tokens
@@ -420,11 +426,11 @@ class Parser(private val tokens: List<Token>) {
     }
 
     /**
-    * Parses multiple arguments enclosed in parentheses.
-    * Supports comma-separated arguments: (arg1, arg2, arg3)
-    * @param context The parsing context containing function name and parameters.
-    * @return A list of Arg objects representing the parsed arguments.
-    */
+     * Parses multiple arguments enclosed in parentheses.
+     * Supports comma-separated arguments: (arg1, arg2, arg3)
+     * @param context The parsing context containing function name and parameters.
+     * @return A list of Arg objects representing the parsed arguments.
+     */
     private fun parseArgumentsInParens(context: ParseContext): List<Arg> {
         consume(TokenType.SEPARATOR, "(", "Expected '('")
 
@@ -533,9 +539,9 @@ class Parser(private val tokens: List<Token>) {
      */
     private fun isLineEnd(): Boolean {
         return check(TokenType.ENDL) ||
-               check(TokenType.EOF) ||
-               check(TokenType.COMMENT) ||
-               check(TokenType.OPEN_COMMENT)
+                check(TokenType.EOF) ||
+                check(TokenType.COMMENT) ||
+                check(TokenType.OPEN_COMMENT)
     }
 
 
