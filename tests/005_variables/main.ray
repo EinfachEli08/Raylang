@@ -8,9 +8,10 @@ func endLine() => putchar(10)
 func putCharacter(c) => putchar(c);
 
 // printing the variable
-func printVar(in) {
-    // accessing the variable
+func printVar(in, another) {
+    // accessing the variables
     putCharacter(in)
+    putCharacter(another)
     endLine()
     //returning the variable
     //return(in)
@@ -18,10 +19,15 @@ func printVar(in) {
 
 // Call both and return success
 func main() {
-    var myVar = 42
+    var myVar, yourVar
+
+    myVar = 42
+    yourVar = 69
 
     // should set giveVar to the value of myVar
-    printVar(myVar)
+    printVar(myVar, yourVar)
+
+    putchar(myVar)
 
     //return should be 42
     return(myVar)
