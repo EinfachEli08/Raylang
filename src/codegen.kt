@@ -137,6 +137,8 @@ class Codegen(private val nodes:List<ASTNode>) {
                     is Function -> {}
                     is Return -> {}
                     is VariableDef -> {}
+                    is MultiVariableDef -> {}
+                    is VariableAssign -> {}
                 }
             }
 

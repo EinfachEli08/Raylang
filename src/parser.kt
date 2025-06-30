@@ -251,9 +251,9 @@ class Parser(private val tokens: List<Token>) {
             check(TokenType.KEYWORD, "func") -> parseFunction()
             check(TokenType.KEYWORD, "return") -> parseReturn(context)
             check(TokenType.KEYWORD, "exit") -> parseExit(context)
-            check(TokenType.KEYWORD, "var") -> parseVarDef(context)
-            check(TokenType.IDENTIFIER) && knownFunctions.contains(current().value) ->
-                parseFunctionCall(context)
+            check(TokenType.KEYWORD, "var") -> parseVarDeclaration(context)
+            check(TokenType.IDENTIFIER) && knownFunctions.contains(current().value) -> parseFunctionCall(context)
+            check(TokenType.IDENTIFIER) && peek().type == TokenType.OPERATOR && peek().value == "=" -> parseVariableAssign(context)
             else -> null
         }
     }
@@ -318,9 +318,9 @@ class Parser(private val tokens: List<Token>) {
         }
 
         advance() // consume function name
-        val arg = parseArgumentInParens(context)
+        val args = parseArgumentsInParens(context)
 
-        return FunctionCall(funcName, context.functionName ?: "", arg)
+        return FunctionCall(funcName, context.functionName ?: "", args)
     }
 
 
@@ -360,25 +360,101 @@ class Parser(private val tokens: List<Token>) {
 
 
     /**
-     * Parses a variable definition, which consists of the 'var' keyword followed by a variable name,
-     * an assignment operator '=', and an argument.
-     * It returns a VariableDef object containing the function name, variable name, and argument.
+     * Parses variable declarations, supporting both single and multiple variable declarations.
+     * Examples: var x = 42, var x, y, z
      * @param context The parsing context containing function name and parameters.
-     * @return A VariableDef object representing the parsed variable definition, or null if the current token is not a variable definition.
+     * @return An ASTNode representing the parsed variable declaration.
      */
-    fun parseVarDef(context: ParseContext): VariableDef? {
+    fun parseVarDeclaration(context: ParseContext): ASTNode? {
         if (!check(TokenType.KEYWORD, "var")) return null
 
         advance() // consume 'var'
-        val varName = consume(TokenType.IDENTIFIER, null,"Expected variable name after 'var'").value
-        consume(TokenType.OPERATOR, "=", "Expected '=' after variable name")
+        val varNames = mutableListOf<String>()
+
+        // Parse first variable name
+        varNames.add(consume(TokenType.IDENTIFIER, null, "Expected variable name after 'var'").value)
+
+        // Check if there are more variable names (comma-separated)
+        while (check(TokenType.SEPARATOR, ",")) {
+            advance() // consume ','
+            varNames.add(consume(TokenType.IDENTIFIER, null, "Expected variable name after ','").value)
+        }
+
+        // Check if there's an assignment
+        if (check(TokenType.OPERATOR, "=")) {
+            // Single variable assignment: var x = 42
+            if (varNames.size > 1) {
+                throw IllegalArgumentException(
+                    "Cannot assign value to multiple variables in declaration at Row: ${current().line}, Col: ${current().column}"
+                )
+            }
+            advance() // consume '='
+            val arg = parseArgument(context)
+                ?: throw IllegalArgumentException(
+                    "Expected value after '=' in var definition at Row: ${current().line}, Col: ${current().column}"
+                )
+            return VariableDef(context.functionName ?: "", varNames[0], arg)
+        } else {
+            // Multiple variable declaration: var x, y, z
+            return MultiVariableDef(context.functionName ?: "", varNames)
+        }
+    }
+
+    /**
+     * Parses a variable assignment statement (not declaration).
+     * Example: x = 42
+     * @param context The parsing context containing function name and parameters.
+     * @return A VariableAssign object representing the parsed assignment.
+     */
+    fun parseVariableAssign(context: ParseContext): VariableAssign? {
+        if (!check(TokenType.IDENTIFIER)) return null
+
+        val varName = advance().value // consume variable name
+        consume(TokenType.OPERATOR, "=", "Expected '=' in assignment")
         val arg = parseArgument(context)
             ?: throw IllegalArgumentException(
-                "Expected value after '=' in var definition at Row: ${current().line}, Col: ${current().column}"
+                "Expected value after '=' in assignment at Row: ${current().line}, Col: ${current().column}"
             )
 
-        return VariableDef(context.functionName ?: "", varName, arg)
+        return VariableAssign(context.functionName ?: "", varName, arg)
     }
+
+    /**
+    * Parses multiple arguments enclosed in parentheses.
+    * Supports comma-separated arguments: (arg1, arg2, arg3)
+    * @param context The parsing context containing function name and parameters.
+    * @return A list of Arg objects representing the parsed arguments.
+    */
+    private fun parseArgumentsInParens(context: ParseContext): List<Arg> {
+        consume(TokenType.SEPARATOR, "(", "Expected '('")
+
+        val args = mutableListOf<Arg>()
+
+        if (!check(TokenType.SEPARATOR, ")")) {
+            // Parse first argument
+            val firstArg = parseArgument(context)
+                ?: throw IllegalArgumentException(
+                    "Expected argument at Row: ${current().line}, Col: ${current().column}"
+                )
+            args.add(firstArg)
+
+            // Parse additional arguments
+            while (check(TokenType.SEPARATOR, ",")) {
+                advance() // consume ','
+                val arg = parseArgument(context)
+                    ?: throw IllegalArgumentException(
+                        "Expected argument after ',' at Row: ${current().line}, Col: ${current().column}"
+                    )
+                args.add(arg)
+            }
+        }
+
+        consume(TokenType.SEPARATOR, ")", "Expected ')' after arguments")
+        expectLineEndOrSemicolon()
+
+        return args
+    }
+
 
     /**
      * Parses an argument enclosed in parentheses.
