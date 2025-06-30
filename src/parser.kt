@@ -1,364 +1,511 @@
 class Parser(private val tokens: List<Token>) {
 
-    private var knownFunctions: List<String> = emptyList()
-
+    private var knownFunctions: MutableSet<String> = mutableSetOf()
     private var pos = 0
 
-    private fun current(): Token = tokens.getOrElse(pos) { tokens.last() }
-    private fun advance() { pos++ }
 
 
     /**
-     * Parses a function definition in the form of `func name(params) { ... }` or `func name(params) => ...`.
-     * Returns a FunctionNode if successful, or null if not a function definition.
+     * Returns the current token without advancing the position.
+     * @return The current token.
      */
-    fun parseFunction(): Function? {
-        // Expects: func name(params) { ... } oder func name(params) => ...
-        if (current().type == TokenType.KEYWORD && current().value == "func") {
-            advance()
-            if (current().type == TokenType.IDENTIFIER) {
-                val funcName = current().value
-                advance()
-                // Parameter parsen
-                val params = mutableListOf<String>()
-                if (current().type == TokenType.SEPARATOR && current().value == "(") {
-                    advance()
-                    while (true) {
-                        if (current().type == TokenType.IDENTIFIER) {
-                            params.add(current().value)
-                            advance()
-                            if (current().type == TokenType.SEPARATOR && current().value == ",") {
-                                advance()
-                                continue
-                            } else {
-                                break
-                            }
-                        } else {
-                            break
-                        }
-                    }
-                    if (current().type == TokenType.SEPARATOR && current().value == ")") {
-                        advance()
-                    } else {
-                        throw IllegalArgumentException("SyntaxErr: Expected ')' after function parameters at Row: ${current().line}, Col: ${current().column}")
-                    }
-                } else {
-                    throw IllegalArgumentException("SyntaxErr: Expected '(' after function name at Row: ${current().line}, Col: ${current().column}")
-                }
-                // Funktionsbody analysieren, um lokale Variablen zu sammeln
-                val localVars = mutableListOf<String>()
-                // Alternative Funktionssyntax: =>
-                if (current().type == TokenType.OPERATOR && current().value == "=>") {
-                    advance()
-                    val body = mutableListOf<ASTNode>()
-                    parse@ while (true) {
-                        val functionCallNode = parseFunctionCall(funcName, params, localVars)
-                        if (functionCallNode != null) {
-                            body.add(functionCallNode)
-                        }
-                        if (current().type == TokenType.ENDL || current().type == TokenType.EOF ||
-                            current().type == TokenType.COMMENT || current().type == TokenType.OPEN_COMMENT) {
-                            break@parse
-                        }
-                        if (current().type == TokenType.SEPARATOR && current().value == ";") {
-                            advance()
-                            continue@parse
-                        }
-                        advance()
-                    }
-                    knownFunctions += funcName
-                    return Function(funcName, params, body)
-                }
-                // Klassische Funktionssyntax: {...}
-                if (current().type == TokenType.SEPARATOR && current().value == "{") {
-                    advance()
-                    val body = mutableListOf<ASTNode>()
-                    while (!(current().type == TokenType.SEPARATOR && current().value == "}")) {
-                        val externNode = parseExtern()
-                        val functionNode = parseFunction()
-                        val returnNode = parseReturn(funcName, params, localVars)
-                        val exitNode = parseExit(funcName, params, localVars)
-                        val varDefNode = parseVarDef(funcName)
-                        val functionCallNode = parseFunctionCall(funcName, params, localVars)
-                        if (externNode != null) {
-                            body.add(externNode)
-                        } else if (functionNode != null) {
-                            body.add(functionNode)
-                        } else if (functionCallNode != null) {
-                            body.add(functionCallNode)
-                        } else if (returnNode != null) {
-                            body.add(returnNode)
-                        } else if (exitNode != null) {
-                            body.add(exitNode)
-                        } else if (varDefNode != null) {
-                            body.add(varDefNode)
-                            localVars.add(varDefNode.name)
-                        } else {
-                            advance()
-                        }
-                    }
-                    advance() // skip '}'
-                    knownFunctions += funcName
-                    return Function(funcName, params, body)
-                } else {
-                    throw IllegalArgumentException("SyntaxErr: Expected '{' or '=>' after function parameters at Row: ${current().line}, Col: ${current().column}")
-                }
-            }
-        }
-        return null
-    }
-
-
-    /**
-     * Hilfsfunktion: Erwartet nach einer schließenden Klammer einen Zeilenumbruch, EOF, Kommentar oder Semikolon.
-     */
-    private fun expectLineEndOrSemicolon() {
-        if (current().type != TokenType.ENDL && current().type != TokenType.EOF && current().type != TokenType.COMMENT && current().type != TokenType.OPEN_COMMENT && !(current().type == TokenType.SEPARATOR && current().value == ";")) {
-            throw IllegalArgumentException("SyntaxErr: No Linebreak or ; after function! Error at: Row: ${current().line}, Col: ${current().column + current().value.length}")
-        }
-    }
-
-    /**
-     * Expects a function parameter in the form of (IDENTIFIER | NUMBER).
-     * Jetzt mit Parameternamen- und lokalen Variablenauflösung für RefAutoVar/AutoVar.
-     */
-    fun parseFuncParams(paramNames: List<String>? = null, localVarNames: List<String>? = null): Arg? {
-        if (current().type == TokenType.SEPARATOR && current().value == "(") {
-            advance()
-
-            if (current().type == TokenType.SEPARATOR && current().value == ")") {
-                advance()
-                expectLineEndOrSemicolon()
-                return Arg.Bogus
-            }
-            if (current().type == TokenType.IDENTIFIER) {
-                val value = current().value
-                advance()
-                if (current().type == TokenType.SEPARATOR && current().value == ")") {
-                    advance()
-                    expectLineEndOrSemicolon()
-
-                    val paramIdx = paramNames?.indexOf(value) ?: -1
-                    if (paramIdx != -1) {
-                        return Arg.RefAutoVar(paramIdx)
-                    }
-
-                    val localIdx = localVarNames?.indexOf(value) ?: -1
-                    if (localIdx != -1) {
-                        return Arg.AutoVar(localIdx + (paramNames?.size ?: 0))
-                    }
-                    throw IllegalArgumentException("NameErr: '$value' ist kein gültiger Funktionsparameter oder lokale Variable!")
-                }
-            } else if (current().type == TokenType.NUMBER) {
-                val value = current().value
-                advance()
-                if (current().type == TokenType.SEPARATOR && current().value == ")") {
-                    advance()
-                    expectLineEndOrSemicolon()
-                    return Arg.Literal(value.toLong())
-                }
-            }
-        }
-        return null
-    }
-
-
-    /**
-     * Parses a function call in the form of `IDENTIFIER(params)`.
-     * Returns a FuncCall if successful, or null if not a function call.
-     */
-    fun parseFunctionCall(scope: String?, paramNames: List<String>? = null, localVarNames: List<String>? = null): FunctionCall? {
-        if (current().type == TokenType.IDENTIFIER){
-            val isKnown = knownFunctions.contains(current().value)
-            if(isKnown) {
-                val identifier = current().value
-                advance()
-                val params = parseFuncParams(paramNames, localVarNames)
-                if (params != null) {
-                    //TODO: scope handling
-                    return FunctionCall(identifier, scope?:"",params)
-                }
-            }else{
-                throw IllegalArgumentException("DefErr: Function ´${current().value}´ isnt defined yet! \n      Error at Row: ${current().line}, Col: ${current().column}")
-            }
-        }
-        return null
+    private fun current(): Token = tokens.getOrElse(pos) {
+        tokens.last()
     }
 
 
 
     /**
-     * Parses an extern statement in the form of `extern (IDENTIFIER | KEYWORD)`.
-     * Returns an Extern if successful, or null if not an extern statement.
+     * Returns the next token without advancing the position.
+     * @param offset The number of tokens to look ahead (default is 1).
+     * @return The token at the specified offset.
      */
-    fun parseExtern(): Extern? {
-        // Expects: extern (IDENTIFIER | KEYWORD)
-        if (current().type == TokenType.KEYWORD && current().value == "extern") {
-            advance()
-
-            val functionList = mutableListOf<String>()
-            // Akzeptiere IDENTIFIER oder KEYWORD als Funktionsnamen
-            while (current().type == TokenType.IDENTIFIER || (current().type == TokenType.KEYWORD && current().value != "extern")) {
-                functionList.add(current().value)
-                advance()
-
-                if (current().type == TokenType.SEPARATOR && current().value == ",") {
-                    advance()
-                    if (!(current().type == TokenType.IDENTIFIER || (current().type == TokenType.KEYWORD && current().value != "extern"))) {
-                        throw IllegalArgumentException("SyntaxErr: Expected identifier after ',' in extern list. \n      Error at: Row: ${current().line}, Col: ${current().column}")
-                    }
-                } else if (current().type == TokenType.ENDL && current().value == "ENDL") {
-                    advance()
-                    break
-                } else {
-                    throw IllegalArgumentException("SyntaxErr: Expected ',' or ')' after function name. \n      Error at: Row: ${current().line}, Col: ${current().column}")
-                }
-            }
-            knownFunctions += functionList // Update known functions
-            return Extern(functionList)
-        }
-        //TODO("Not yet implemented")
-        return null
+    private fun peek(offset: Int = 1): Token = tokens.getOrElse(pos + offset) {
+        tokens.last()
     }
 
 
-    /**
-     * Parses a return statement in the form of `return (IDENTIFIER | NUMBER)`.
-     * Returns a ReturnNode if successful, or null if not a return statement.
-     */
-    fun parseReturn(scope: String?, paramNames: List<String>? = null, localVarNames: List<String>? = null): Return? {
-        // Expects: return ( IDENTIFIER | NUMBER )
-        if (current().type == TokenType.KEYWORD && current().value == "return") {
-            advance()
-            val params = parseFuncParams(paramNames, localVarNames)
-            println("return: $params")
-            if (params != null) {
-                //TODO: scope handling
-                return Return(scope?:"", params)
-            }
-        }
-        return null
-    }
 
     /**
-     * Parses a return statement in the form of `exit (IDENTIFIER | NUMBER)`.
-     * Returns a ExitNode if successful, or null if not a return statement.
+     * Advances to the next token and returns the current token.
+     * @return The current token before advancing.
      */
-    fun parseExit(scope: String?, paramNames: List<String>? = null, localVarNames: List<String>? = null): Exit? {
-        // Expects: exit ( IDENTIFIER | NUMBER )
-        if (current().type == TokenType.KEYWORD && current().value == "exit") {
-            advance()
-            val params = parseFuncParams(paramNames, localVarNames)
-            if (params != null) {
-                //TODO: scope handling
-                return Exit(scope?:"",params)
-            }
-        }
-        return null
+    private fun advance(): Token = current().also {
+        pos++
     }
 
 
+
     /**
-     * Parses all statements in the input until EOF.
-     * Returns a list of ASTNodes.
+     * Checks if the parser has reached the end of the token list.
+     * @return True if the current token is EOF, false otherwise.
+     */
+    private fun isAtEnd(): Boolean = current().type == TokenType.EOF
+
+
+
+    /**
+     * Checks if the current token matches the specified type and optionally a value.
+     * @param type The type of token to check against.
+     * @param value Optional value to check against the current token's value.
+     * @return True, if the current token matches the specified type and value, false otherwise.
+     */
+    private fun check(type: TokenType, value: String? = null): Boolean = current().type == type && (value == null || current().value == value)
+
+
+
+    /**
+     * Checks if the current token matches the specified type.
+     * @param type The type of token to check against.
+     * @param value Optional value to check against the current token's value.
+     * @param errorMsg The error message to throw if the check fails.
+     * @return True, if the current token matches the specified type, false otherwise.
+     */
+    private fun consume(type: TokenType, value: String? = null, errorMsg: String): Token {
+        if (!check(type, value)) {
+            throw IllegalArgumentException("$errorMsg at Row: ${current().line}, Col: ${current().column}")
+        }
+        return advance()
+    }
+
+
+
+    /**
+     * Represents the context in which a function or statement is being parsed.
+     * @param functionName The name of the function being parsed, if applicable.
+     * @param parameters The list of parameters for the function, if applicable.
+     * @param localVars The list of local variables defined within the function or context.
+     */
+    data class ParseContext(
+        val functionName: String? = null,
+        val parameters: List<String> = emptyList(),
+        val localVars: MutableList<String> = mutableListOf()
+    )
+
+
+
+    /**
+     * Parses the entire input and returns a list of AST nodes.
+     * It collects function names first, then processes each top-level statement.
+     * @return A list of AST nodes representing the parsed input.
      */
     fun parseAll(): List<ASTNode> {
         collectFunctionNames()
         val nodes = mutableListOf<ASTNode>()
-        while (current().type != TokenType.EOF) {
-            val node = parseExtern()
-                ?: parseFunction()
-                ?: parseFunctionCall(null)
-                ?: parseReturn(null)
-                ?: parseExit(null)
+
+        while (!isAtEnd()) {
+            val node = parseTopLevelStatement()
             if (node != null) {
                 nodes.add(node)
             } else {
-                advance()
+                advance() // Skip unknown tokens
             }
         }
         return nodes
     }
 
 
+
     /**
-     * Collects all function names from the tokens.
-     * This is done to ensure that function calls can be recognized even if they are defined later in the code.
+     * Parses a top-level statement, which can be an extern, function definition, function call,
+     * return statement, or exit statement.
+     * @return An ASTNode representing the parsed statement, or null if no valid statement is found.
+     */
+    private fun parseTopLevelStatement(): ASTNode? {
+        return when {
+            check(TokenType.KEYWORD, "extern") -> parseExtern()
+            check(TokenType.KEYWORD, "func") -> parseFunction()
+            check(TokenType.IDENTIFIER) && knownFunctions.contains(current().value) -> parseFunctionCall(ParseContext())
+            check(TokenType.KEYWORD, "return") -> parseReturn(ParseContext())
+            check(TokenType.KEYWORD, "exit") -> parseExit(ParseContext())
+            else -> null
+        }
+    }
+
+
+
+    /**
+     * Parses a function definition, which can be either an arrow function or a block function.
+     * It expects the 'func' keyword, followed by the function name, parameters, and body.
+     * @return A Function object representing the parsed function, or null if the current token is not a function definition.
+     */
+    fun parseFunction(): Function? {
+        if (!check(TokenType.KEYWORD, "func")) return null
+
+        advance() // consume 'func'
+        val funcName = consume(TokenType.IDENTIFIER, null,"Expected function name").value
+        val params = parseParameterList()
+        val context = ParseContext(funcName, params)
+
+        val body = when {
+            check(TokenType.OPERATOR, "=>") -> parseArrowFunctionBody(context)
+            check(TokenType.SEPARATOR, "{") -> parseBlockFunctionBody(context)
+            else -> throw IllegalArgumentException(
+                "Expected '{' or '=>' after function parameters at Row: ${current().line}, Col: ${current().column}"
+            )
+        }
+
+        knownFunctions.add(funcName)
+        return Function(funcName, params, body)
+    }
+
+
+
+    /**
+     * Parses a list of parameters enclosed in parentheses.
+     * It expects the opening parenthesis '(', followed by identifiers separated by commas, and ending with a closing parenthesis ')'.
+     * @return A list of parameter names.
+     */
+    private fun parseParameterList(): List<String> {
+        consume(TokenType.SEPARATOR, "(", "Expected '(' after function name")
+        val params = mutableListOf<String>()
+
+        while (!check(TokenType.SEPARATOR, ")")) {
+            if (check(TokenType.IDENTIFIER)) {
+                params.add(advance().value)
+
+                if (check(TokenType.SEPARATOR, ",")) {
+                    advance()
+                } else if (!check(TokenType.SEPARATOR, ")")) {
+                    throw IllegalArgumentException(
+                        "Expected ',' or ')' in parameter list at Row: ${current().line}, Col: ${current().column}"
+                    )
+                }
+            } else {
+                throw IllegalArgumentException(
+                    "Expected parameter name at Row: ${current().line}, Col: ${current().column}"
+                )
+            }
+        }
+
+        consume(TokenType.SEPARATOR, ")", "Expected ')' after parameters")
+        return params
+    }
+
+
+
+    /**
+     * Parses the body of an arrow function, which starts with '=>' and contains statements until a line end.
+     * @param context The parsing context containing function name and parameters.
+     * @return A list of AST nodes representing the function body.
+     */
+    private fun parseArrowFunctionBody(context: ParseContext): List<ASTNode> {
+        advance() // consume '=>'
+        val body = mutableListOf<ASTNode>()
+
+        while (!isLineEnd()) {
+            val stmt = parseStatement(context)
+            if (stmt != null) {
+                body.add(stmt)
+            }
+
+            if (check(TokenType.SEPARATOR, ";")) {
+                advance()
+            }
+        }
+
+        return body
+    }
+
+
+
+    /**
+     * Parses the body of a block function, which starts with '{' and contains statements until '}'.
+     * It also handles variable definitions by adding them to the local scope.
+     * @param context The parsing context containing function name and parameters.
+     * @return A list of AST nodes representing the function body.
+     */
+    private fun parseBlockFunctionBody(context: ParseContext): List<ASTNode> {
+        advance() // consume '{'
+        val body = mutableListOf<ASTNode>()
+
+        while (!check(TokenType.SEPARATOR, "}")) {
+            val stmt = parseStatement(context)
+            if (stmt != null) {
+                body.add(stmt)
+
+                // Handle variable definitions (add to local scope)
+                if (stmt is VariableDef) {
+                    context.localVars.add(stmt.name)
+                }
+            } else {
+                advance() // Skip unknown tokens
+            }
+        }
+
+        consume(TokenType.SEPARATOR, "}", "Expected '}' to close function body")
+        return body
+    }
+
+
+
+    /**
+     * Parses a statement based on the current token type.
+     * It can parse extern declarations, function calls, return statements, exit statements, and variable definitions.
+     * @param context The parsing context containing function name and parameters.
+     * @return An ASTNode representing the parsed statement, or null if no valid statement is found.
+     */
+    private fun parseStatement(context: ParseContext): ASTNode? {
+        return when {
+            check(TokenType.KEYWORD, "extern") -> parseExtern()
+            check(TokenType.KEYWORD, "func") -> parseFunction()
+            check(TokenType.KEYWORD, "return") -> parseReturn(context)
+            check(TokenType.KEYWORD, "exit") -> parseExit(context)
+            check(TokenType.KEYWORD, "var") -> parseVarDef(context)
+            check(TokenType.IDENTIFIER) && knownFunctions.contains(current().value) ->
+                parseFunctionCall(context)
+            else -> null
+        }
+    }
+
+
+
+
+    /**
+     * Parses an extern declaration, which allows the definition of external functions.
+     * It expects the 'extern' keyword followed by a list of function names.
+     * @return An Extern object containing the list of function names, or null if the current token is not an extern declaration.
+     */
+    fun parseExtern(): Extern? {
+        if (!check(TokenType.KEYWORD, "extern")) return null
+
+        advance() // consume 'extern'
+        val functionList = mutableListOf<String>()
+
+        while (check(TokenType.IDENTIFIER) ||
+            (check(TokenType.KEYWORD) && !check(TokenType.KEYWORD, "extern"))) {
+
+            functionList.add(advance().value)
+
+            if (check(TokenType.SEPARATOR, ",")) {
+                advance()
+                if (!(check(TokenType.IDENTIFIER) ||
+                            (check(TokenType.KEYWORD) && !check(TokenType.KEYWORD, "extern")))) {
+                    throw IllegalArgumentException(
+                        "Expected identifier after ',' in extern list at Row: ${current().line}, Col: ${current().column}"
+                    )
+                }
+            } else if (check(TokenType.ENDL)) {
+                advance()
+                break
+            } else {
+                throw IllegalArgumentException(
+                    "Expected ',' or newline after function name at Row: ${current().line}, Col: ${current().column}"
+                )
+            }
+        }
+
+        knownFunctions.addAll(functionList)
+        return Extern(functionList)
+    }
+
+
+
+    /**
+     * Parses a function call, which consists of an identifier followed by arguments in parentheses.
+     * It checks if the function is known and returns a FunctionCall object.
+     * @param context The parsing context containing function name and parameters.
+     * @return A FunctionCall object representing the parsed function call, or null if the current token is not a function call.
+     */
+    fun parseFunctionCall(context: ParseContext): FunctionCall? {
+        if (!check(TokenType.IDENTIFIER)) return null
+
+        val funcName = current().value
+        if (!knownFunctions.contains(funcName)) {
+            throw IllegalArgumentException(
+                "DefErr: Function '$funcName' isn't defined yet! Error at Row: ${current().line}, Col: ${current().column}"
+            )
+        }
+
+        advance() // consume function name
+        val arg = parseArgumentInParens(context)
+
+        return FunctionCall(funcName, context.functionName ?: "", arg)
+    }
+
+
+
+    /**
+     * Parses a return statement, which consists of the 'return' keyword followed by an argument in parentheses.
+     * It returns a Return object containing the function name and the argument.
+     * @param context The parsing context containing function name and parameters.
+     * @return A Return object representing the parsed return statement, or null if the current token is not a return statement.
+     */
+    fun parseReturn(context: ParseContext): Return? {
+        if (!check(TokenType.KEYWORD, "return")) return null
+
+        advance() // consume 'return'
+        val arg = parseArgumentInParens(context)
+
+        return Return(context.functionName ?: "", arg)
+    }
+
+
+
+    /**
+     * Parses an exit statement, which consists of the 'exit' keyword followed by an argument in parentheses.
+     * It returns an Exit object containing the function name and the argument.
+     * @param context The parsing context containing function name and parameters.
+     * @return An Exit object representing the parsed exit statement, or null if the current token is not an exit statement.
+     */
+    fun parseExit(context: ParseContext): Exit? {
+        if (!check(TokenType.KEYWORD, "exit")) return null
+
+        advance() // consume 'exit'
+        val arg = parseArgumentInParens(context)
+
+        return Exit(context.functionName ?: "", arg)
+    }
+
+
+
+    /**
+     * Parses a variable definition, which consists of the 'var' keyword followed by a variable name,
+     * an assignment operator '=', and an argument.
+     * It returns a VariableDef object containing the function name, variable name, and argument.
+     * @param context The parsing context containing function name and parameters.
+     * @return A VariableDef object representing the parsed variable definition, or null if the current token is not a variable definition.
+     */
+    fun parseVarDef(context: ParseContext): VariableDef? {
+        if (!check(TokenType.KEYWORD, "var")) return null
+
+        advance() // consume 'var'
+        val varName = consume(TokenType.IDENTIFIER, null,"Expected variable name after 'var'").value
+        consume(TokenType.OPERATOR, "=", "Expected '=' after variable name")
+        val arg = parseArgument(context)
+            ?: throw IllegalArgumentException(
+                "Expected value after '=' in var definition at Row: ${current().line}, Col: ${current().column}"
+            )
+
+        return VariableDef(context.functionName ?: "", varName, arg)
+    }
+
+    /**
+     * Parses an argument enclosed in parentheses.
+     * It expects the opening parenthesis '(', followed by an argument, and ending with a closing parenthesis ')'.
+     * If no argument is provided, it returns Arg.Bogus.
+     * @param context The parsing context containing function name and parameters.
+     * @return An Arg object representing the parsed argument.
+     */
+    private fun parseArgumentInParens(context: ParseContext): Arg {
+        consume(TokenType.SEPARATOR, "(", "Expected '('")
+
+        val arg = when {
+            check(TokenType.SEPARATOR, ")") -> Arg.Bogus
+            else -> parseArgument(context) ?: throw IllegalArgumentException(
+                "Expected argument at Row: ${current().line}, Col: ${current().column}"
+            )
+        }
+
+        consume(TokenType.SEPARATOR, ")", "Expected ')' after argument")
+        expectLineEndOrSemicolon()
+
+        return arg
+    }
+
+
+
+    /**
+     * Parses an argument, which can be a number or an identifier.
+     * It returns an Arg object representing the parsed argument.
+     * @param context The parsing context containing function name and parameters.
+     * @return An Arg object representing the parsed argument, or null if no valid argument is found.
+     */
+    private fun parseArgument(context: ParseContext): Arg? {
+        return when (current().type) {
+            TokenType.NUMBER -> {
+                val value = advance().value
+                Arg.Literal(value.toLong())
+            }
+            TokenType.IDENTIFIER -> {
+                val name = advance().value
+                resolveVariable(name, context)
+            }
+            else -> null
+        }
+    }
+
+
+
+    /**
+     * Resolves a variable name to its corresponding Arg object.
+     * It checks if the name is a function parameter or a local variable in the current context.
+     * @param name The name of the variable to resolve.
+     * @param context The parsing context containing function parameters and local variables.
+     * @return An Arg object representing the resolved variable.
+     * @throws IllegalArgumentException if the name is not a valid function parameter or local variable.
+     */
+    private fun resolveVariable(name: String, context: ParseContext): Arg {
+        val paramIdx = context.parameters.indexOf(name)
+        if (paramIdx != -1) {
+            return Arg.RefAutoVar(paramIdx)
+        }
+
+        val localIdx = context.localVars.indexOf(name)
+        if (localIdx != -1) {
+            return Arg.AutoVar(localIdx + context.parameters.size)
+        }
+
+        throw IllegalArgumentException("NameErr: '$name' is not a valid function parameter or local variable!")
+    }
+
+
+
+    /**
+     * Checks if the current token is a line end, which can be an ENDL, EOF, COMMENT, or OPEN_COMMENT.
+     * @return True if the current token is a line end, false otherwise.
+     */
+    private fun isLineEnd(): Boolean {
+        return check(TokenType.ENDL) ||
+               check(TokenType.EOF) ||
+               check(TokenType.COMMENT) ||
+               check(TokenType.OPEN_COMMENT)
+    }
+
+
+
+    /**
+     * Checks if the current token is a line end or a semicolon.
+     * If not, it throws an IllegalArgumentException with the current token's position.
+     * @throws IllegalArgumentException if the current token is not a line end or semicolon.
+     */
+    private fun expectLineEndOrSemicolon() {
+        if (!isLineEnd() && !check(TokenType.SEPARATOR, ";")) {
+            throw IllegalArgumentException(
+                "Expected line break or ';' at Row: ${current().line}, Col: ${current().column + current().value.length}"
+            )
+        }
+    }
+
+
+
+    /**
+     * Collects all known function names from the tokens.
+     * It scans through the tokens and adds function names to the knownFunctions set.
      */
     fun collectFunctionNames() {
         var i = 0
         while (i < tokens.size) {
-            val t = tokens[i]
-            if (t.type == TokenType.KEYWORD && t.value == "func") {
-                // nächstes Token ist Funktionsname
-                val nameToken = tokens.getOrNull(i + 1)
-                if (nameToken != null && nameToken.type == TokenType.IDENTIFIER) {
-                    knownFunctions += nameToken.value
-                }
-            }
-            if (t.type == TokenType.KEYWORD && t.value == "extern") {
-                // alle folgenden IDENTIFIER oder KEYWORD bis Zeilenende
-                var j = i + 1
-                while (j < tokens.size && (tokens[j].type == TokenType.IDENTIFIER || (tokens[j].type == TokenType.KEYWORD && tokens[j].value != "extern"))) {
-                    knownFunctions += tokens[j].value
-                    j++
-                }
-            }
-            i++
-        }
-    }
+            val token = tokens[i]
 
-    /**
-     * Parst eine Variablendefinition: var name = value
-     */
-    fun parseVarDef(functionScope: String, paramNames: List<String>? = null, localVarNames: List<String>? = null): VariableDef? {
-        if (current().type == TokenType.KEYWORD && current().value == "var") {
-            advance()
-            if (current().type == TokenType.IDENTIFIER) {
-                val varName = current().value
-                advance()
-                if (current().type == TokenType.OPERATOR && current().value == "=") {
-                    advance()
-                    val arg = parseSingleArg(paramNames, localVarNames)
-                        ?: throw IllegalArgumentException("SyntaxErr: Expected value after '=' in var definition at Row: "+
-                            "${current().line}, Col: ${current().column}")
-                    return VariableDef(functionScope, varName, arg)
-                } else {
-                    throw IllegalArgumentException("SyntaxErr: Expected '=' after variable name in var definition at Row: ${current().line}, Col: ${current().column}")
+            when {
+                token.type == TokenType.KEYWORD && token.value == "func" -> {
+                    val nameToken = tokens.getOrNull(i + 1)
+                    if (nameToken?.type == TokenType.IDENTIFIER) {
+                        knownFunctions.add(nameToken.value)
+                    }
                 }
-            } else {
-                throw IllegalArgumentException("SyntaxErr: Expected variable name after 'var' at Row: ${current().line}, Col: ${current().column}")
-            }
-        }
-        return null
-    }
-
-    /**
-     * Hilfsfunktion zum Parsen eines Arguments (IDENTIFIER oder NUMBER)
-     */
-    private fun parseSingleArg(paramNames: List<String>? = null, localVarNames: List<String>? = null): Arg? {
-        return when (current().type) {
-            TokenType.NUMBER -> {
-                val value = current().value
-                advance()
-                Arg.Literal(value.toLong())
-            }
-            TokenType.IDENTIFIER -> {
-                val value = current().value
-                advance()
-                val paramIdx = paramNames?.indexOf(value) ?: -1
-                if (paramIdx != -1) {
-                    Arg.RefAutoVar(paramIdx)
-                } else {
-                    val localIdx = localVarNames?.indexOf(value) ?: -1
-                    if (localIdx != -1) {
-                        Arg.AutoVar(localIdx + (paramNames?.size ?: 0))
-                    } else {
-                        Arg.RefAutoVar(0) // Platzhalter, ggf. anpassen
+                token.type == TokenType.KEYWORD && token.value == "extern" -> {
+                    var j = i + 1
+                    while (j < tokens.size &&
+                        (tokens[j].type == TokenType.IDENTIFIER ||
+                                (tokens[j].type == TokenType.KEYWORD && tokens[j].value != "extern"))) {
+                        knownFunctions.add(tokens[j].value)
+                        j++
                     }
                 }
             }
-            else -> null
+            i++
         }
     }
 }
