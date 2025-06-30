@@ -438,7 +438,7 @@ class Parser(private val tokens: List<Token>) {
     private fun resolveVariable(name: String, context: ParseContext): Arg {
         val paramIdx = context.parameters.indexOf(name)
         if (paramIdx != -1) {
-            return Arg.RefAutoVar(paramIdx)
+            return Arg.AutoVar(paramIdx)
         }
 
         val localIdx = context.localVars.indexOf(name)

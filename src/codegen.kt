@@ -29,21 +29,27 @@ class Codegen(private val nodes:List<ASTNode>) {
      * @param arg The argument to load.
      * @param reg The register to load the argument into.
      * @param output The StringBuilder to append the assembly code to.
+     * @param varOffsetMap The map of variable names to their stack offsets.
      */
-    fun loadArgToReg(arg: Arg, reg: String, output: StringBuilder) {
+    fun loadArgToReg(arg: Arg, reg: String, output: StringBuilder, varOffsetMap: Map<String, Int> = emptyMap()) {
         when(arg) {
             is Arg.Deref -> {
-                output.appendLine(                      "    mov $reg, [rbp-${arg.index * 8}]"  )
-                output.appendLine(                      "    mov $reg, [${reg}]"                )
+                output.appendLine("    mov $reg, [rbp-${arg.index * 8}]")
+                output.appendLine("    mov $reg, [${reg}]")
             }
-            is Arg.RefAutoVar -> output.appendLine(     "    lea $reg, [rbp-${arg.index * 8}]"  )
-            is Arg.RefExternal -> output.appendLine(    "    lea $reg, [_${arg.name}]"          )
-            is Arg.External -> output.appendLine(       "    mov $reg, [_${arg.name}]"          )
-            is Arg.AutoVar -> output.appendLine(        "    mov $reg, [rbp-${arg.index * 8}]"  )
-            is Arg.Literal -> output.appendLine(        "    mov $reg, ${arg.value}"            )
-            is Arg.DataOffset -> output.appendLine(     "    mov $reg, dat+${arg.offset}"       )
+            is Arg.RefAutoVar -> {
+                val offset = (arg.index + 1) * 8
+                output.appendLine("    mov $reg, [rbp-${offset}]")
+            }
+            is Arg.RefExternal -> output.appendLine("    lea $reg, [_${arg.name}]")
+            is Arg.External -> output.appendLine("    mov $reg, [_${arg.name}]")
+            is Arg.AutoVar -> {
+                val offset = (arg.index + 1) * 8
+                output.appendLine("    mov $reg, [rbp-${offset}]")
+            }
+            is Arg.Literal -> output.appendLine("    mov $reg, ${arg.value}")
+            is Arg.DataOffset -> output.appendLine("    mov $reg, dat+${arg.offset}")
             is Arg.Bogus -> {
-
             }
         }
     }
@@ -71,7 +77,6 @@ class Codegen(private val nodes:List<ASTNode>) {
      */
     fun generateDataSection(output: StringBuilder, nodes: List<ASTNode>) {
         var varNodes = nodes.filterIsInstance<VariableDef>().toMutableList()
-        // Suche auch in Funktionen nach lokalen Variablen
         for (node in nodes) {
             if (node is Function) {
                 val funcName = node.name
@@ -119,7 +124,6 @@ class Codegen(private val nodes:List<ASTNode>) {
                 println("================")
             }
 
-            // Fix this in parsing, but for now we need to get the language running
             var varDefCount = 0
             for (i in func.body.indices) {
                 val operation = func.body[i]
@@ -138,9 +142,8 @@ class Codegen(private val nodes:List<ASTNode>) {
 
             println(varDefCount)
 
-
             val variableCount = func.body.filterIsInstance<VariableDef>().size + varDefCount
-            generateFunction(func.name, func.params,variableCount,func.body, output)
+            generateFunction(func.name, func.params, variableCount, func.body, output)
         }
 
         val mainFunction = functionNodes.find { it.name == "main" }
@@ -185,7 +188,7 @@ class Codegen(private val nodes:List<ASTNode>) {
      * @param funcBody The body of the function as a list of AST nodes.
      * @param output The StringBuilder to append the assembly code to.
      */
-    fun generateFunction(funcName: String, funcParams:List<String>, varsCount:Int,funcBody: List<ASTNode>,output: StringBuilder) {
+    fun generateFunction(funcName: String, funcParams:List<String>, varsCount:Int, funcBody: List<ASTNode>, output: StringBuilder) {
         val stackSize = alignBytes(varsCount * 8, 16)
 
         println("size: $stackSize for $funcName with $varsCount vars")
@@ -226,7 +229,7 @@ class Codegen(private val nodes:List<ASTNode>) {
                  */
                 is Exit -> {
                     output.appendLine("    mov rax, 60")
-                    loadArgToReg(operation.arg, "rdi", output)
+                    loadArgToReg(operation.arg, "rdi", output, varOffsetMap)
                     output.appendLine("    syscall")
                 }
 
@@ -237,15 +240,12 @@ class Codegen(private val nodes:List<ASTNode>) {
                  * Otherwise, it assumes the value is a variable and uses `mov rdi, [value]`.
                  */
                 is FunctionCall -> {
-                    // Funktion erwartet jetzt nur noch ein Arg, nicht args-Liste
-                    loadArgToReg(operation.arg, "rdi", output)
-                    output.appendLine("    mov al, 0") // x86_64 Linux ABI: Anzahl der Floating-Point-Args in al
+                    loadArgToReg(operation.arg, "rdi", output, varOffsetMap)
+                    output.appendLine("    mov al, 0")
                     output.appendLine("    call _${operation.name}")
-                    //if( stack_args_count > 0) {
-                    //    output.appendLine("    add rsp, $stack_args_size")
-                    //}
-                    //output.appendLine("    mov [rbp-${operation.result*8}], rax")
-                    output.appendLine("    mov [rbp-16], rax")
+
+                    val resultOffset = (funcParams.size + funcBody.filterIsInstance<VariableDef>().size + 1) * 8
+                    output.appendLine("    mov [rbp-${resultOffset}], rax")
                 }
 
 
@@ -257,7 +257,7 @@ class Codegen(private val nodes:List<ASTNode>) {
                 is Return -> {
                     println(operation)
                     if(operation.arg != Arg.Bogus) {
-                        loadArgToReg(operation.arg, "rax", output)
+                        loadArgToReg(operation.arg, "rax", output, varOffsetMap)
                     }
                     output.appendLine("    mov rsp, rbp")
                     output.appendLine("    pop rbp")
@@ -269,7 +269,7 @@ class Codegen(private val nodes:List<ASTNode>) {
                  * Variables are initialized in the function code.
                  */
                 is VariableDef -> {
-                    loadArgToReg(operation.arg, "rax", output)
+                    loadArgToReg(operation.arg, "rax", output, varOffsetMap)
                     val offset = varOffsetMap[operation.name] ?: error("Variable ${operation.name} not found in offset map!")
                     output.appendLine("    mov QWORD [rbp-${offset}], rax")
                 }
@@ -292,16 +292,19 @@ class Codegen(private val nodes:List<ASTNode>) {
     fun buildVarOffsetMap(params: List<String>, body: List<ASTNode>): Map<String, Int> {
         val map = mutableMapOf<String, Int>()
         var offset = 8
+
         for (param in params) {
             map[param] = offset
             offset += 8
         }
+
         for (node in body) {
             if (node is VariableDef) {
                 map[node.name] = offset
                 offset += 8
             }
         }
+
         return map
     }
 }
