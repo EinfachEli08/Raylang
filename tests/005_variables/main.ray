@@ -18,8 +18,7 @@ func printVars(in, another) {
 }
 
 func getVar(input) {
-    // this function is not used in the main function
-    return input
+    return(input)
 }
 
 // Call both and return success
