@@ -6,7 +6,7 @@ func main(){
     // comparing agains a value
     if(compare == 3){
 
-         // checking if true
+        // checking if true
         if(true) endl()
 
         // comparing against a boolean
