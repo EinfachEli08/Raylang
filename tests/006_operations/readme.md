@@ -1,7 +1,6 @@
-# Test case: Functions calling functions
+# Test case: Operations
 
-In this test, variables are being defined and modified.
-Variables can modify variables and they can be used in functions as parameters or returns.
+In this test, variables are modified with operations using fixed values and other variables
 ## Build instructions
 
 1. Run `make` to build the test program.
