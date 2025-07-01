@@ -1,0 +1,13 @@
+func main(){
+  
+  // The program should terminate with code "0" before returning 69
+  
+  asm(
+    mov rax, 60 ; Loading the Syscall for exit
+    mov rdi, 0  ; The exit code
+    syscall     ; calling the Syscall
+  )
+  
+  // This shouldnt even execute
+  return(69)
+}
