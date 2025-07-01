@@ -363,11 +363,12 @@ cd Raylang
 | 003: Main entry point /w return                            | Passed       | Done                   | 07.06.2025 |
 | 004: Functions calling Functions                           | Passed       | Done                   | 07.07.2025 |
 | 005: Declaring and using variables between functions       | Not passed   | Active Development     |            |
-| 006: Adding, Subtracting, Multiplying and (maybe) division | Not passed   | Passed at              |            |
-| 007: Inline Assembly                                       | Non-existent | Passed at              |            |
-| 008: If statements                                         | Non-existent | Passed at              |            |
-| 009: For loops                                             | Non-existent | Passed at              |            |
-| XXX: More tests comming soon                               | TBA          | Passed at              |            |
+| 006: Adding, Subtracting, Multiplying and (maybe) division | Not passed   | Not Implemented        |            |
+| 007: Inline Assembly                                       | Non-existent | Not Implemented        |            |
+| 008: Main scope as Optional                                | Non-existent | Not Implemented        |            |
+| 009: If statements                                         | Non-existent | Not Implemented        |            |
+| 010: For loops                                             | Non-existent | Not Implemented        |            |
+| XXX: More tests comming soon                               | TBA          | Not Implemented        |            |
 ---  
 
 ## Other projects
