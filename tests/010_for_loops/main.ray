@@ -5,7 +5,7 @@ func main(){
 
     // this should print 10x "E"
     for(var i = 1; i >= 10; i++){
-      putchar(69)
+        putchar(69)
     }
     
     endl()
