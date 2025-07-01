@@ -417,6 +417,36 @@ class Parser(private val tokens: List<Token>) {
 
         val varName = advance().value // consume variable name
         consume(TokenType.OPERATOR, "=", "Expected '=' in assignment")
+
+        // Special case: check if the RHS is a function call
+        if (check(TokenType.IDENTIFIER) && knownFunctions.contains(current().value)) {
+            val nextToken = peek()
+            if (nextToken.type == TokenType.SEPARATOR && nextToken.value == "(") {
+                // This is a function call on the RHS
+                // We need the result to be stored and then assigned
+                // Use a special index that represents where function call results are stored
+                val funcCallResultIndex = context.parameters.size + context.localVars.size
+
+                // We still need to consume the function call tokens
+                advance() // consume function name
+                var parenDepth = 0
+                while (pos < tokens.size && !(parenDepth == 0 && isLineEnd())) {
+                    if (current().value == "(") parenDepth++
+                    else if (current().value == ")") {
+                        parenDepth--
+                        if (parenDepth == 0) {
+                            advance() // consume final closing paren
+                            break
+                        }
+                    }
+                    advance()
+                }
+
+                return VariableAssign(context.functionName ?: "", varName, Arg.AutoVar(funcCallResultIndex))
+            }
+        }
+
+        // Normal case: parse regular argument
         val arg = parseArgument(context)
             ?: throw IllegalArgumentException(
                 "Expected value after '=' in assignment at Row: ${current().line}, Col: ${current().column}"
