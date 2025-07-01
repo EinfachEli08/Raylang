@@ -364,10 +364,10 @@ cd Raylang
 | 004: Functions calling Functions                           | Passed       | Done                   | 07.07.2025 |
 | 005: Declaring and using variables between functions       | Not passed   | Active Development     |            |
 | 006: Adding, Subtracting, Multiplying and (maybe) division | Not passed   | Not Implemented        |            |
-| 007: Inline Assembly                                       | Non-existent | Not Implemented        |            |
-| 008: Main scope as Optional                                | Non-existent | Not Implemented        |            |
-| 009: If statements                                         | Non-existent | Not Implemented        |            |
-| 010: For loops                                             | Non-existent | Not Implemented        |            |
+| 007: Inline Assembly                                       | Not passed   | Not Implemented        |            |
+| 008: Main scope as Optional                                | Not passed   | Not Implemented        |            |
+| 009: If statements                                         | Not passed   | Not Implemented        |            |
+| 010: For loops                                             | Not passed   | Not Implemented        |            |
 | XXX: More tests comming soon                               | TBA          | Not Implemented        |            |
 ---  
 
