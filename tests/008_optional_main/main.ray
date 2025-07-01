@@ -1,0 +1,17 @@
+// Testing the order of definitions
+func endl() => putchar(10)
+
+// defining the variable to print
+var printMe = 54 + 15
+
+// calling functions
+printVar(printMe)
+endl()
+
+
+func printVar(input){
+  putchar(input)
+}
+
+// Testing the order of definitions
+extern putchar
