@@ -17,6 +17,11 @@ func printVars(in, another) {
     //return(in)
 }
 
+func getVar(input) {
+    // this function is not used in the main function
+    return input
+}
+
 // Call both and return success
 func main() {
     var myVar, yourVar
@@ -24,9 +29,17 @@ func main() {
     myVar = 42
     yourVar = 69
 
+    //testing variable assignment
+    var anotherVar = myVar
+    var star
+    star = getVar(anotherVar)
     // should set giveVar to the value of myVar
     printVars(myVar, yourVar)
     putchar(myVar)
+    endLine()
+
+    putchar(anotherVar)
+    putchar(star)
     endLine()
 
     //return should be 42
