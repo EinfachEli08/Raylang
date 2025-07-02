@@ -3,8 +3,6 @@ class Parser(private val tokens: List<Token>) {
     private var knownFunctions: MutableSet<String> = mutableSetOf()
     private var pos = 0
 
-
-
     /**
      * Returns the current token without advancing the position.
      * @return The current token.
@@ -81,7 +79,6 @@ class Parser(private val tokens: List<Token>) {
         val parameters: List<String> = emptyList(),
         val localVars: MutableList<String> = mutableListOf()
     )
-
 
 
     /**
@@ -259,11 +256,29 @@ class Parser(private val tokens: List<Token>) {
             check(TokenType.KEYWORD, "exit") -> parseExit(context)
             check(TokenType.KEYWORD, "var") -> parseVarDeclaration(context)
             check(TokenType.IDENTIFIER) && knownFunctions.contains(current().value) -> parseFunctionCall(context)
-            check(TokenType.IDENTIFIER) && peek().type == TokenType.OPERATOR && peek().value == "=" -> parseVariableAssign(context)
+            check(TokenType.IDENTIFIER) && peek().type == TokenType.OPERATOR && peek().value == "=" -> {
+                // Check if this is a function call assignment
+                val varName = current().value
+                advance() // consume variable name
+                advance() // consume '='
+
+                if (check(TokenType.IDENTIFIER) && knownFunctions.contains(current().value)) {
+                    val nextToken = peek()
+                    if (nextToken.type == TokenType.SEPARATOR && nextToken.value == "(") {
+                        // This is a function call assignment: var = func(args)
+                        val functionCall = parseFunctionCall(context)
+                            ?: throw IllegalArgumentException("Failed to parse function call")
+                        return FunctionCallAssign(context.functionName ?: "", varName, functionCall)
+                    }
+                }
+
+                // Reset position for normal variable assignment parsing
+                pos -= 2 // Go back to the start of the assignment
+                parseVariableAssign(context)
+            }
             else -> null
         }
     }
-
 
 
 
@@ -324,7 +339,7 @@ class Parser(private val tokens: List<Token>) {
         }
 
         advance() // consume function name
-        val args = parseArgumentsInParens(context)
+        val args = parseArgumentsInParens(context,null,funcName)
 
         return FunctionCall(funcName, context.functionName ?: "", args)
     }
@@ -341,7 +356,7 @@ class Parser(private val tokens: List<Token>) {
         if (!check(TokenType.KEYWORD, "return")) return null
 
         advance() // consume 'return'
-        val arg = parseArgumentInParens(context)
+        val arg = parseArgumentsInParens(context,1,"return").first()
 
         return Return(context.functionName ?: "", arg)
     }
@@ -358,7 +373,7 @@ class Parser(private val tokens: List<Token>) {
         if (!check(TokenType.KEYWORD, "exit")) return null
 
         advance() // consume 'exit'
-        val arg = parseArgumentInParens(context)
+        val arg = parseArgumentsInParens(context,1,"exit").first()
 
         return Exit(context.functionName ?: "", arg)
     }
@@ -386,6 +401,13 @@ class Parser(private val tokens: List<Token>) {
             varNames.add(consume(TokenType.IDENTIFIER, null, "Expected variable name after ','").value)
         }
 
+        // Check for duplicate declaration in the current scope (parameters and local variables)
+        for (name in varNames) {
+            if (context.parameters.contains(name) || context.localVars.contains(name)) {
+                throw IllegalArgumentException("VarDefErr: Variable '$name' is already declared in the current scope! Error at Row: ${current().line}, Col: ${current().column}")
+            }
+        }
+
         // Check if there's an assignment
         if (check(TokenType.OPERATOR, "=")) {
             // Single variable assignment: var x = 42
@@ -406,6 +428,8 @@ class Parser(private val tokens: List<Token>) {
         }
     }
 
+
+
     /**
      * Parses a variable assignment statement (not declaration).
      * Example: x = 42
@@ -418,35 +442,6 @@ class Parser(private val tokens: List<Token>) {
         val varName = advance().value // consume variable name
         consume(TokenType.OPERATOR, "=", "Expected '=' in assignment")
 
-        // Special case: check if the RHS is a function call
-        if (check(TokenType.IDENTIFIER) && knownFunctions.contains(current().value)) {
-            val nextToken = peek()
-            if (nextToken.type == TokenType.SEPARATOR && nextToken.value == "(") {
-                // This is a function call on the RHS
-                // We need the result to be stored and then assigned
-                // Use a special index that represents where function call results are stored
-                val funcCallResultIndex = context.parameters.size + context.localVars.size
-
-                // We still need to consume the function call tokens
-                advance() // consume function name
-                var parenDepth = 0
-                while (pos < tokens.size && !(parenDepth == 0 && isLineEnd())) {
-                    if (current().value == "(") parenDepth++
-                    else if (current().value == ")") {
-                        parenDepth--
-                        if (parenDepth == 0) {
-                            advance() // consume final closing paren
-                            break
-                        }
-                    }
-                    advance()
-                }
-
-                return VariableAssign(context.functionName ?: "", varName, Arg.AutoVar(funcCallResultIndex))
-            }
-        }
-
-        // Normal case: parse regular argument
         val arg = parseArgument(context)
             ?: throw IllegalArgumentException(
                 "Expected value after '=' in assignment at Row: ${current().line}, Col: ${current().column}"
@@ -455,64 +450,46 @@ class Parser(private val tokens: List<Token>) {
         return VariableAssign(context.functionName ?: "", varName, arg)
     }
 
+
+
     /**
-     * Parses multiple arguments enclosed in parentheses.
-     * Supports comma-separated arguments: (arg1, arg2, arg3)
-     * @param context The parsing context containing function name and parameters.
-     * @return A list of Arg objects representing the parsed arguments.
+     * Parses argument lists in parentheses, optionally supporting a limit for the number of arguments.
+     * If no limit is set, unlimited arguments are allowed.
+     * @param context The parsing context with function names and parameters.
+     * @param limit Maximum number of arguments (optional).
+     * @param functionName The name of the function being parsed (for error messages).
+     * @return A list of Arg objects (if limit == 1: list with one Arg or empty/Bogus).
      */
-    private fun parseArgumentsInParens(context: ParseContext): List<Arg> {
+    private fun parseArgumentsInParens(context: ParseContext, limit: Int? = null, functionName: String?): List<Arg> {
         consume(TokenType.SEPARATOR, "(", "Expected '('")
 
         val args = mutableListOf<Arg>()
+        var count = 0
 
         if (!check(TokenType.SEPARATOR, ")")) {
-            // Parse first argument
-            val firstArg = parseArgument(context)
-                ?: throw IllegalArgumentException(
-                    "Expected argument at Row: ${current().line}, Col: ${current().column}"
-                )
-            args.add(firstArg)
-
-            // Parse additional arguments
-            while (check(TokenType.SEPARATOR, ",")) {
-                advance() // consume ','
+            do {
+                if (limit != null && count >= limit) {
+                    throw IllegalArgumentException(
+                        "DEFERR: Too many arguments ${if (!functionName.isNullOrEmpty()) "in $functionName " else ""}(max $limit) at Row: ${current().line}, Col: ${current().column}"
+                    )
+                }
                 val arg = parseArgument(context)
                     ?: throw IllegalArgumentException(
-                        "Expected argument after ',' at Row: ${current().line}, Col: ${current().column}"
+                        "Expected argument at Row: ${current().line}, Col: ${current().column}"
                     )
                 args.add(arg)
-            }
+                count++
+            } while (check(TokenType.SEPARATOR, ",") && advance().let { true })
         }
 
         consume(TokenType.SEPARATOR, ")", "Expected ')' after arguments")
         expectLineEndOrSemicolon()
 
-        return args
-    }
-
-
-    /**
-     * Parses an argument enclosed in parentheses.
-     * It expects the opening parenthesis '(', followed by an argument, and ending with a closing parenthesis ')'.
-     * If no argument is provided, it returns Arg.Bogus.
-     * @param context The parsing context containing function name and parameters.
-     * @return An Arg object representing the parsed argument.
-     */
-    private fun parseArgumentInParens(context: ParseContext): Arg {
-        consume(TokenType.SEPARATOR, "(", "Expected '('")
-
-        val arg = when {
-            check(TokenType.SEPARATOR, ")") -> Arg.Bogus
-            else -> parseArgument(context) ?: throw IllegalArgumentException(
-                "Expected argument at Row: ${current().line}, Col: ${current().column}"
-            )
+        if (limit == 1) {
+            return if (args.isEmpty()) listOf(Arg.Bogus) else args
         }
 
-        consume(TokenType.SEPARATOR, ")", "Expected ')' after argument")
-        expectLineEndOrSemicolon()
-
-        return arg
+        return args
     }
 
 

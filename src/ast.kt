@@ -16,6 +16,8 @@ data class FunctionCall(val name: String, val scope: String, val args: List<Arg>
 data class Function(val name: String, val params: List<String>, val body: List<ASTNode>) : ASTNode()
 
 
+// a Node for function calls that assign the result to a variable, e.g. var x = putchar("A")
+data class FunctionCallAssign(val scope: String, val varName: String, val functionCall: FunctionCall) : ASTNode()
 
 
 // a Node for variable definitions, e.g. var x = 42

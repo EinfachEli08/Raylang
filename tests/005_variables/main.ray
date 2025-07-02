@@ -21,6 +21,10 @@ func getVar(input) {
     return(input)
 }
 
+func getE(){
+    return(69)
+}
+
 // Call both and return success
 func main() {
     var myVar, yourVar
@@ -39,6 +43,9 @@ func main() {
 
     putchar(anotherVar)
     putchar(star)
+    var e = getE()
+    e = getE()
+    putchar(e)
     endLine()
 
     //return should be 42

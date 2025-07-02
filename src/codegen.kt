@@ -117,32 +117,13 @@ class Codegen(private val nodes:List<ASTNode>) {
 
         val functionNodes = nodes.filterIsInstance<Function>()
         for (func in functionNodes) {
-            println("func:" + func.name +"_"+ func.params)
-            if( func.name == "endLine"){
-                println("================")
-                println(func)
-                println("================")
-            }
 
             var varDefCount = 0
-            for (i in func.body.indices) {
-                val operation = func.body[i]
-                when (operation) {
-                    is FunctionCall -> {
-                        varDefCount++
-                    }
-
-                    is Exit -> {}
-                    is Extern -> {}
-                    is Function -> {}
-                    is Return -> {}
-                    is VariableDef -> {}
-                    is MultiVariableDef -> {}
-                    is VariableAssign -> {}
+            for (operation in func.body) {
+                if (operation is FunctionCall) {
+                    varDefCount++
                 }
             }
-
-            println(varDefCount)
 
             val variableCount = func.body.filterIsInstance<VariableDef>().size +
                     func.body.filterIsInstance<MultiVariableDef>().sumOf { it.names.size } +
@@ -270,6 +251,35 @@ class Codegen(private val nodes:List<ASTNode>) {
                     output.appendLine("    mov [rbp-${resultOffset}], rax")
                 }
 
+                is FunctionCallAssign -> {
+                    // Generate the function call first
+                    val funcCall = operation.functionCall
+                    val argRegisters = arrayOf("rdi", "rsi", "rdx", "rcx", "r8", "r9")
+
+                    // Load arguments into registers
+                    for (j in funcCall.args.indices) {
+                        if (j < argRegisters.size) {
+                            loadArgToReg(funcCall.args[j], argRegisters[j], output, varOffsetMap)
+                        } else {
+                            // Handle stack arguments for more than 6 parameters
+                            loadArgToReg(funcCall.args[j], "rax", output, varOffsetMap)
+                            output.appendLine("    push rax")
+                        }
+                    }
+
+                    output.appendLine("    mov al, 0")
+                    output.appendLine("    call _${funcCall.name}")
+
+                    // Clean up stack if we pushed arguments
+                    val stackArgs = maxOf(0, funcCall.args.size - 6)
+                    if (stackArgs > 0) {
+                        output.appendLine("    add rsp, ${stackArgs * 8}")
+                    }
+
+                    // Now assign the result (in rax) to the variable
+                    val offset = varOffsetMap[operation.varName] ?: error("Variable ${operation.varName} not found in offset map!")
+                    output.appendLine("    mov QWORD [rbp-${offset}], rax")
+                }
 
                 /**
                  * Generates assembly code for a return statement.
