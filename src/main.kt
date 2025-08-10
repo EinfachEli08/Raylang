@@ -15,7 +15,7 @@ fun main(args: Array<String>){
 
     val parser = Parser(tokens)
     val nodes = parser.parseAll()
-    println(nodes)
+
     val gen = Codegen(nodes)
     val output = gen.generateProgram()
 
