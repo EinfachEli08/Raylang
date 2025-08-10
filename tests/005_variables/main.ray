@@ -36,6 +36,7 @@ func main() {
     var anotherVar = myVar
     var star
     star = getVar(anotherVar)
+
     // should set giveVar to the value of myVar
     printVars(myVar, yourVar)
     putchar(myVar)
@@ -43,7 +44,8 @@ func main() {
 
     putchar(anotherVar)
     putchar(star)
-    var e = getE()
+
+    var e //= getE()      This isnt properly implemented yet
     e = getE()
     putchar(e)
     endLine()

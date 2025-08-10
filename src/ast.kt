@@ -23,12 +23,9 @@ data class FunctionCallAssign(val scope: String, val varName: String, val functi
 // a Node for variable definitions, e.g. var x = 42
 data class VariableDef(val scope: String, val name: String, val arg: Arg) : ASTNode()
 
-// a Node for multiple variable declarations, e.g. var x, y, z
-data class MultiVariableDef(val scope: String, val names: List<String>) : ASTNode()
 
 // a Node for variable assignments, e.g. x = 42
 data class VariableAssign(val scope: String, val name: String, val arg: Arg) : ASTNode()
-
 
 
 

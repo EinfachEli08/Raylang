@@ -13,18 +13,12 @@ fun main(args: Array<String>){
     val lexer = Lexer()
     val tokens = lexer.tokenize(source)
 
-    println("Tokens:  $tokens")
-
     val parser = Parser(tokens)
     val nodes = parser.parseAll()
-
+    println(nodes)
     val gen = Codegen(nodes)
     val output = gen.generateProgram()
 
-    println()
-    println("Ray to assembly compiled code:")
-    println()
-    println(output.toString())
     println("File saved to ${file.parentFile?.absolutePath ?: "."}, ${file.nameWithoutExtension}.asm")
 
     val asmFile = File(file.parentFile, file.nameWithoutExtension + ".asm")

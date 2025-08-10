@@ -217,22 +217,21 @@ class Parser(private val tokens: List<Token>) {
         val body = mutableListOf<ASTNode>()
 
         while (!check(TokenType.SEPARATOR, "}")) {
-            val stmt = parseStatement(context)
-            if (stmt != null) {
-                body.add(stmt)
-
-                // Handle variable definitions (add to local scope)
-                when (stmt) {
-                    is VariableDef -> {
-                        context.localVars.add(stmt.name)
-                    }
-                    is MultiVariableDef -> {
-                        context.localVars.addAll(stmt.names)
-                    }
-                    else -> {}
+            // Special handling for var declarations
+            if (check(TokenType.KEYWORD, "var")) {
+                val varDefs = parseVarDeclaration(context)
+                body.addAll(varDefs)
+                // Add all variable names to local scope
+                varDefs.forEach { varDef ->
+                    context.localVars.add(varDef.name)
                 }
             } else {
-                advance() // Skip unknown tokens
+                val stmt = parseStatement(context)
+                if (stmt != null) {
+                    body.add(stmt)
+                } else {
+                    advance() // Skip unknown tokens
+                }
             }
         }
 
@@ -254,28 +253,16 @@ class Parser(private val tokens: List<Token>) {
             check(TokenType.KEYWORD, "func") -> parseFunction()
             check(TokenType.KEYWORD, "return") -> parseReturn(context)
             check(TokenType.KEYWORD, "exit") -> parseExit(context)
-            check(TokenType.KEYWORD, "var") -> parseVarDeclaration(context)
-            check(TokenType.IDENTIFIER) && knownFunctions.contains(current().value) -> parseFunctionCall(context)
-            check(TokenType.IDENTIFIER) && peek().type == TokenType.OPERATOR && peek().value == "=" -> {
-                // Check if this is a function call assignment
-                val varName = current().value
-                advance() // consume variable name
-                advance() // consume '='
-
-                if (check(TokenType.IDENTIFIER) && knownFunctions.contains(current().value)) {
-                    val nextToken = peek()
-                    if (nextToken.type == TokenType.SEPARATOR && nextToken.value == "(") {
-                        // This is a function call assignment: var = func(args)
-                        val functionCall = parseFunctionCall(context)
-                            ?: throw IllegalArgumentException("Failed to parse function call")
-                        return FunctionCallAssign(context.functionName ?: "", varName, functionCall)
-                    }
-                }
-
-                // Reset position for normal variable assignment parsing
-                pos -= 2 // Go back to the start of the assignment
-                parseVariableAssign(context)
+            check(TokenType.KEYWORD, "var") -> {
+                // Special case: var returns a list, we need to handle this differently
+                // Option 1: Return only the first one (not ideal)
+                // Option 2: Create a wrapper node
+                // Option 3: Change parseStatement to return List<ASTNode>
+                val varDefs = parseVarDeclaration(context)
+                if (varDefs.isNotEmpty()) varDefs.first() else null
             }
+            check(TokenType.IDENTIFIER) && knownFunctions.contains(current().value) -> parseFunctionCall(context)
+            check(TokenType.IDENTIFIER) && peek().type == TokenType.OPERATOR && peek().value == "=" -> parseVariableAssign(context)
             else -> null
         }
     }
@@ -381,18 +368,18 @@ class Parser(private val tokens: List<Token>) {
 
 
     /**
-     * Parses variable declarations, supporting both single and multiple variable declarations.
-     * Examples: var x = 42, var x, y, z
+     * Parses variable declarations - ONLY declarations without assignments.
+     * Examples: var x, var x, y, z
+     * For assignments, those are handled separately as VariableAssign nodes.
      * @param context The parsing context containing function name and parameters.
      * @return An ASTNode representing the parsed variable declaration.
      */
-    fun parseVarDeclaration(context: ParseContext): ASTNode? {
-        if (!check(TokenType.KEYWORD, "var")) return null
+    fun parseVarDeclaration(context: ParseContext): List<VariableDef> {
+        if (!check(TokenType.KEYWORD, "var")) return emptyList()
 
         advance() // consume 'var'
         val varNames = mutableListOf<String>()
 
-        // Parse first variable name
         varNames.add(consume(TokenType.IDENTIFIER, null, "Expected variable name after 'var'").value)
 
         // Check if there are more variable names (comma-separated)
@@ -408,23 +395,41 @@ class Parser(private val tokens: List<Token>) {
             }
         }
 
-        // Check if there's an assignment
         if (check(TokenType.OPERATOR, "=")) {
-            // Single variable assignment: var x = 42
             if (varNames.size > 1) {
-                throw IllegalArgumentException(
-                    "Cannot assign value to multiple variables in declaration at Row: ${current().line}, Col: ${current().column}"
-                )
+                throw IllegalArgumentException("Cannot assign value to multiple variables in declaration at Row: ${current().line}, Col: ${current().column}")
             }
+
             advance() // consume '='
+
+            // Check if this is a function call assignment
+            if (check(TokenType.IDENTIFIER) && knownFunctions.contains(current().value)) {
+                val nextToken = peek()
+                if (nextToken.type == TokenType.SEPARATOR && nextToken.value == "(") {
+                    // This is a function call assignment: var x = func(args)
+                    val functionCall = parseFunctionCall(context)
+                        ?: throw IllegalArgumentException("Failed to parse function call")
+
+                    // Add the variable to the local scope
+                    context.localVars.add(varNames[0])
+
+                    // Note: We return a FunctionCallAssign wrapped in a list here
+                    // You might need to handle this differently depending on your AST structure
+                    return listOf(FunctionCallAssign(context.functionName ?: "", varNames[0], functionCall) as VariableDef)
+                }
+            }
+
+            // Regular assignment: var x = 42
             val arg = parseArgument(context)
                 ?: throw IllegalArgumentException(
                     "Expected value after '=' in var definition at Row: ${current().line}, Col: ${current().column}"
                 )
-            return VariableDef(context.functionName ?: "", varNames[0], arg)
+            return listOf(VariableDef(context.functionName ?: "", varNames[0], arg))
         } else {
-            // Multiple variable declaration: var x, y, z
-            return MultiVariableDef(context.functionName ?: "", varNames)
+            // Variable declaration(s) without assignment - initialize all to 0
+            return varNames.map { name ->
+                VariableDef(context.functionName ?: "", name, Arg.Literal(0))
+            }
         }
     }
 
@@ -432,16 +437,28 @@ class Parser(private val tokens: List<Token>) {
 
     /**
      * Parses a variable assignment statement (not declaration).
-     * Example: x = 42
+     * Example: x = 42, x = getE()
      * @param context The parsing context containing function name and parameters.
-     * @return A VariableAssign object representing the parsed assignment.
+     * @return A VariableAssign or FunctionCallAssign object representing the parsed assignment.
      */
-    fun parseVariableAssign(context: ParseContext): VariableAssign? {
+    fun parseVariableAssign(context: ParseContext): ASTNode? {
         if (!check(TokenType.IDENTIFIER)) return null
 
         val varName = advance().value // consume variable name
         consume(TokenType.OPERATOR, "=", "Expected '=' in assignment")
 
+        // Check if this is a function call assignment
+        if (check(TokenType.IDENTIFIER) && knownFunctions.contains(current().value)) {
+            val nextToken = peek()
+            if (nextToken.type == TokenType.SEPARATOR && nextToken.value == "(") {
+                // This is a function call assignment: x = func(args)
+                val functionCall = parseFunctionCall(context)
+                    ?: throw IllegalArgumentException("Failed to parse function call")
+                return FunctionCallAssign(context.functionName ?: "", varName, functionCall)
+            }
+        }
+
+        // Regular assignment: x = 42
         val arg = parseArgument(context)
             ?: throw IllegalArgumentException(
                 "Expected value after '=' in assignment at Row: ${current().line}, Col: ${current().column}"
