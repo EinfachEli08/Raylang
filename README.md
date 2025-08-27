@@ -29,7 +29,7 @@ Ray was designed from scratch with a few clear goals:
 * ✔ `record` types for data modeling
 * ✔ Type-safe `match` and `when` expressions
 * ✔ Inline function syntax
-* ✔ Scoped visibility (`scoped`)
+* ✔ open visibility (`open`)
 * ✔ String interpolation with `${}`
 * ✔ Extension methods (`modify`)
 * ✔ Built-in IO and Utillitiy Libraries
@@ -48,7 +48,7 @@ Ray was designed from scratch with a few clear goals:
 | `class [Name] {}`            | Defines a class                                                       | `class Greeter {}`                                             | ❌ Not implemented            |                               | 
 | `constructor(...) {}`        | Special method for initializing a class                               | `constructor(name : String) { ... }`                           | ❌ Not implemented            |                               | 
 | `func [name](...) : [type]`  | Defines a function with parameters and return type                    | `func greet(name : String) : String`                           | ✔ Implemented (NO TYPES YET)  | Kotlin                        |
-| `scoped [type] [name]`       | Declares a variable/function with limited (local/private) scope       | `scoped func greet(...)`                                       | ❌ Not implemented            |                               | 
+| `open [type] [name]`         | Declares a variable/function with public scope                        | `open func greet(...)`, `open func greet(...)`, `open class greet{ ... }`, `open { var x = 3 }`| ❌ Not implemented            |                               | 
 | `modify [Type] {}`           | Extension modifier to add methods to existing types                   | `modify String { func upper() => ... }`                        | ❌ Not implemented            |                               | 
 | `var [name] : [type]`        | Mutable variable declaration                                          | `var age : Int = 28`                                           | ❌ Not implemented            |                               | 
 | `val [name] : [type]`        | Immutable (final) variable declaration                                | `val name : String = "Elias"`                                  | ❌ Not implemented            |                               | 
@@ -145,15 +145,17 @@ import ray.utils
     age? means the field is optional (nullable).
     role has a default value of "guest", thus it can accept optional values without being optional.
 */ 
-record Person {
+// Open keyword to access over entire project
+open record Person {
     var name : String
     var age? : Int
     var role : String = "guest"
 }
 
 // Greeter class that stores a Person object and can greet them.
-class Greeter {
-    scoped var toGreet : Person  // Scoped = only accessible within this class.
+open class Greeter {
+    // this variable is only visible from inside of the class
+    var toGreet : Person 
 
     // a constructor that initializes the Greeter class with given parameters.
     constructor(name : String, age? : Int, role? : String) {
@@ -176,18 +178,20 @@ class Greeter {
             role = role?      
         )
     }
+    // a bunch of open definitions using the open scope
+    open {
+        // Inline function to set the age.
+        func setAge(age : Int) => it.toGreet.age = age
 
-    // Inline function to set the age.
-    func setAge(age : Int) => it.toGreet.age = age
+        // Inline function to set the role of the person (e.g., guest, admin).
+        func setRole(role : String) => it.toGreet.role = role
 
-    // Inline function to set the role of the person (e.g., guest, admin).
-    func setRole(role : String) => it.toGreet.role = role
+        // Public function to say hi. Calls the internal greet() function.
+        func sayHi() => println(greet(it.toGreet))
+    }
 
-    // Public function to say hi. Calls the internal greet() function.
-    func sayHi() => println(greet(it.toGreet))
-
-    // An internal (scoped) function that constructs a greeting message.
-    scoped func greet(person : Person) : String {
+    // this function is only accessable from inside the class
+    func greet(person : Person) : String {
 
         val intro = "Hello, I am ${person.name}"
 
@@ -225,7 +229,7 @@ modify String {
 
 // You can open a scope on a variable to manipulate its getters and setters
 // You can even add other variables or functions. its just another scope that interacts with the value!
-var userCounter : Int = 0 {
+open var userCounter : Int = 0 {
     // Local scoped variable for tracking access
     var readWriteCount : Int = 0
 
@@ -247,21 +251,23 @@ var userCounter : Int = 0 {
       set() => println("userCounter set to ${it}"); readWriteCount++
     */
 
-    // Helper function accessible only within this scope
-    func getAccessCount() : Int {
-        return(readWriteCount)
+    open {
+        func getAccessCount() : Int {
+            return(readWriteCount)
+        }
+
+        // If available, increment by a value, else increment by 1
+        func increment(by? : Int) => it + (by? : 1)
+
+        // If available, decrement by a value, else decrement by 1
+        func decrement(by? : Int) => it - (by? : 1)
     }
-
-    // If available, increment by a value, else increment by 1
-    func increment(by? : Int) => it + (by? : 1)
-
-    // If available, decrement by a value, else decrement by 1
-    func decrement(by? : Int) => it - (by? : 1)
+    
 }
 
 
-// Main entry point with parameters for command line arguments.
-func main(argv?, argc?) : Int {
+// open Main entry point with parameters for command line arguments.
+open func main(argv?, argc?) : Int {
     
 
     // Create a greeter for "Elias"
@@ -330,7 +336,6 @@ cd Raylang
 * [ ] Bootstrapping
 * [ ] ...
 * [ ] Main scope as default scope (making func main() optional)
-* [ ] Scoped variables
 * [ ] Type safety
 * [ ] Types
 * [ ] String interpolation
@@ -339,6 +344,7 @@ cd Raylang
 * [ ] Optionals safety
 * [ ] nested functions
 * [ ] Classes
+* [ ] Open definitions
 * [ ] Constructors
 * [ ] 'it' keyword
 * [ ] ...
